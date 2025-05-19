@@ -14,3 +14,6 @@ cargo build --release
 # copy to /usr/local/sbin
 cp target/release/nftables-blocklist-updater /usr/local/sbin/
 ```
+
+## Usage
+Use with the provided blocklist table in `nftables/blocklist/blocklist.nft
