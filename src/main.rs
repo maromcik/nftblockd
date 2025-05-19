@@ -77,10 +77,10 @@ impl Blocklist {
     pub fn validate_blocklist(self) -> Result<ValidatedBlocklist, AppError> {
         let validate_ipv4 = |ip: &str| -> bool {
             match (ip.parse::<Ipv4Addr>(), ip.parse::<Ipv4Net>()) {
-                (Err(ip_err), Err(net_err)) => {
+                (Err(ip_err), Err(_)) => {
                     warn!(
-                        "Error parsing IPv4: {}; as adr: {}; as net: {}",
-                        ip, ip_err, net_err
+                        "Error parsing IPv4: {}; {}",
+                        ip, ip_err
                     );
                     false
                 }
@@ -92,10 +92,10 @@ impl Blocklist {
         };
         let validate_ipv6 = |ip: &str| -> bool {
             match (ip.parse::<Ipv6Addr>(), ip.parse::<Ipv6Net>()) {
-                (Err(ip_err), Err(net_err)) => {
+                (Err(ip_err), Err(_)) => {
                     warn!(
-                        "Error parsing IPv6: {}; as adr: {}; as net: {}",
-                        ip, ip_err, net_err
+                        "Error parsing IPv6: {}; {}",
+                        ip, ip_err
                     );
                     false
                 }
