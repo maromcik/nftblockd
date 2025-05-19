@@ -48,7 +48,7 @@ struct Cli {
         short = '4',
         long,
         value_name = "IPv4_URL",
-        env = "BLOCKLIST_URL4",
+        env = "BLOCKLIST_IPV4_URL",
     )]
     url4: String,
 
@@ -57,7 +57,7 @@ struct Cli {
         short = '6',
         long,
         value_name = "IPv6_URL",
-        env = "BLOCKLIST_URL6",
+        env = "BLOCKLIST_IPV6_URL",
     )]
     url6: String,
 
