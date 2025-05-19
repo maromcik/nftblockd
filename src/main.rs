@@ -73,10 +73,12 @@ struct Cli {
 }
 
 fn update(cli: &Cli) -> Result<(), AppError> {
-    let blocklist_ipv4 = Blocklist::IPv4(fetch_blocklist(&cli.url4)?).validate_blocklist()?;
-    let blocklist_ipv6 = Blocklist::IPv6(fetch_blocklist(&cli.url6)?).validate_blocklist()?;
-    blocklist_ipv4.store_blocklist(&cli.dir, &cli.filename)?;
-    blocklist_ipv6.store_blocklist(&cli.dir, &cli.filename)?;
+    Blocklist::IPv4(fetch_blocklist(&cli.url4)?)
+        .validate_blocklist()?
+        .store_blocklist(&cli.dir, &cli.filename)?;
+    Blocklist::IPv6(fetch_blocklist(&cli.url6)?)
+        .validate_blocklist()?
+        .store_blocklist(&cli.dir, &cli.filename)?;
     load_nft(&cli.command)?;
     Ok(())
 }
