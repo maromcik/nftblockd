@@ -1,10 +1,10 @@
+use crate::error::{AppError, AppErrorKind};
+use ipnet::{Ipv4Net, Ipv6Net};
+use log::{debug, info, warn};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use ipnet::{Ipv4Net, Ipv6Net};
-use log::{debug, info, warn};
-use crate::error::{AppError, AppErrorKind};
 
 pub fn fetch_blocklist(endpoint: &str) -> Result<Vec<String>, AppError> {
     let body = ureq::get(endpoint)
@@ -35,63 +35,59 @@ pub enum Blocklist {
 impl Blocklist {
     pub fn validate_blocklist(self) -> Result<ValidatedBlocklist, AppError> {
         let validate_ipv4 = |ip: &str| -> bool {
-            match (ip.parse::<Ipv4Addr>(), ip.parse::<Ipv4Net>()) {
-                (Err(ip_err), Err(_)) => {
-                    warn!("error parsing IPv4: {}; {}", ip, ip_err);
-                    false
-                }
-                (_, _) => {
-                    debug!("valid IPv4: {}", ip);
-                    true
-                }
+            if let (Err(ip_err), Err(_)) = (ip.parse::<Ipv4Addr>(), ip.parse::<Ipv4Net>()) {
+                warn!("error parsing IPv4: {}; {}", ip, ip_err);
+                false
+            } else {
+                debug!("valid IPv4: {}", ip);
+                true
             }
         };
         let validate_ipv6 = |ip: &str| -> bool {
-            match (ip.parse::<Ipv6Addr>(), ip.parse::<Ipv6Net>()) {
-                (Err(ip_err), Err(_)) => {
-                    warn!("error parsing IPv6: {}; {}", ip, ip_err);
-                    false
-                }
-                (_, _) => {
-                    debug!("valid IPv6: {}", ip);
-                    true
-                }
+            if let (Err(ip_err), Err(_)) = (ip.parse::<Ipv6Addr>(), ip.parse::<Ipv6Net>()) {
+                warn!("error parsing IPv6: {}; {}", ip, ip_err);
+                false
+            } else {
+                debug!("valid IPv6: {}", ip);
+                true
             }
         };
-        Ok(match self {
-            Self::IPv4(parsed_ips) => {
-                let blocklist = parsed_ips
+        let blocklist = match self {
+            Self::IPv4(parsed_ips) => ValidatedBlocklist::IPv4(
+                parsed_ips
                     .into_iter()
                     .filter(|ip| validate_ipv4(ip))
-                    .collect::<Vec<String>>();
-                if blocklist.is_empty() {
-                    return Err(AppError::new(
-                        AppErrorKind::NoAddressesParsedError,
-                        "the blocklist is empty after parsing",
-                    ));
-                }
-                ValidatedBlocklist::IPv4(blocklist)
-            }
-            Self::IPv6(parsed_ips) => {
-                let blocklist = parsed_ips
+                    .collect::<Vec<String>>(),
+            ),
+            Self::IPv6(parsed_ips) => ValidatedBlocklist::IPv6(
+                parsed_ips
                     .into_iter()
                     .filter(|ip| validate_ipv6(ip))
-                    .collect::<Vec<String>>();
-                if blocklist.is_empty() {
-                    return Err(AppError::new(
-                        AppErrorKind::NoAddressesParsedError,
-                        "the blocklist is empty after parsing",
-                    ));
-                }
-                ValidatedBlocklist::IPv6(blocklist)
-            }
-        })
+                    .collect::<Vec<String>>(),
+            ),
+        };
+        if blocklist.is_empty() {
+            return Err(AppError::new(
+                AppErrorKind::NoAddressesParsedError,
+                "the blocklist is empty after parsing",
+            ));
+        };
+        Ok(blocklist)
     }
 }
 
 pub enum ValidatedBlocklist {
     IPv4(Vec<String>),
     IPv6(Vec<String>),
+}
+
+impl ValidatedBlocklist {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::IPv4(ips) => ips.is_empty(),
+            Self::IPv6(ips) => ips.is_empty(),
+        }
+    }
 }
 
 impl Display for ValidatedBlocklist {
