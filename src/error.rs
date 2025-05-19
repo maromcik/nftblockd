@@ -13,6 +13,8 @@ pub enum AppErrorKind {
     NoAddressesParsedError,
     #[error("nftables failed")]
     NftablesError,
+    #[error("invalid command")]
+    InvalidCommandError,
 }
 
 #[derive(Error, Clone)]

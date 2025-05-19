@@ -25,7 +25,7 @@ struct Cli {
         short,
         long,
         value_name = "PATH_TO_DIR",
-        default_value = "/etc/nftables/blocklist/"
+        default_value = "/etc/nftables/blocklist"
     )]
     dir: String,
 
@@ -45,6 +45,15 @@ struct Cli {
     /// Endpoint for getting the ipv6 blocklist
     #[clap(short = '6', long, value_name = "IPv6_URL")]
     url6: String,
+
+    /// Nftables reload command
+    #[clap(
+        short = 'c',
+        long,
+        value_name = "COMMAND",
+        default_value = "nft -f /etc/nftables/blocklist/blocklist.nft"
+    )]
+    command: String,
 }
 
 pub fn fetch_blocklist(endpoint: &str) -> Result<Vec<String>, AppError> {
@@ -53,17 +62,17 @@ pub fn fetch_blocklist(endpoint: &str) -> Result<Vec<String>, AppError> {
         .call()?
         .body_mut()
         .read_to_string()?;
-    let blocklist = body
-        .trim()
-        .split("\n")
-        .map(|s| s.trim().to_string())
-        .collect::<Vec<String>>();
-    if blocklist.is_empty() {
+    if body.is_empty() {
         return Err(AppError::new(
             AppErrorKind::EmptyBlocklistError,
             format!("URL: {}", endpoint).as_str(),
         ));
     }
+    let blocklist = body
+        .trim()
+        .split("\n")
+        .map(|s| s.trim().to_string())
+        .collect::<Vec<String>>();
     info!("blocklist fetched from: {}", endpoint);
     Ok(blocklist)
 }
@@ -78,14 +87,11 @@ impl Blocklist {
         let validate_ipv4 = |ip: &str| -> bool {
             match (ip.parse::<Ipv4Addr>(), ip.parse::<Ipv4Net>()) {
                 (Err(ip_err), Err(_)) => {
-                    warn!(
-                        "Error parsing IPv4: {}; {}",
-                        ip, ip_err
-                    );
+                    warn!("error parsing IPv4: {}; {}", ip, ip_err);
                     false
                 }
                 (_, _) => {
-                    debug!("Valid IPv4: {}", ip);
+                    debug!("valid IPv4: {}", ip);
                     true
                 }
             }
@@ -93,14 +99,11 @@ impl Blocklist {
         let validate_ipv6 = |ip: &str| -> bool {
             match (ip.parse::<Ipv6Addr>(), ip.parse::<Ipv6Net>()) {
                 (Err(ip_err), Err(_)) => {
-                    warn!(
-                        "Error parsing IPv6: {}; {}",
-                        ip, ip_err
-                    );
+                    warn!("error parsing IPv6: {}; {}", ip, ip_err);
                     false
                 }
                 (_, _) => {
-                    debug!("Valid IPv6: {}", ip);
+                    debug!("valid IPv6: {}", ip);
                     true
                 }
             }
@@ -114,7 +117,7 @@ impl Blocklist {
                 if blocklist.is_empty() {
                     return Err(AppError::new(
                         AppErrorKind::NoAddressesParsedError,
-                        "Blocklist is empty after parsing",
+                        "the blocklist is empty after parsing",
                     ));
                 }
                 ValidatedBlocklist::IPv4(blocklist)
@@ -127,7 +130,7 @@ impl Blocklist {
                 if blocklist.is_empty() {
                     return Err(AppError::new(
                         AppErrorKind::NoAddressesParsedError,
-                        "Blocklist is empty after parsing",
+                        "the blocklist is empty after parsing",
                     ));
                 }
                 ValidatedBlocklist::IPv6(blocklist)
@@ -171,15 +174,22 @@ fn update(cli: &Cli) -> Result<(), AppError> {
     let blocklist_ipv6 = Blocklist::IPv6(fetch_blocklist(&cli.url6)?).validate_blocklist()?;
     blocklist_ipv4.store_blocklist(&cli.dir, &cli.filename)?;
     blocklist_ipv6.store_blocklist(&cli.dir, &cli.filename)?;
-    load_nft()?;
+    load_nft(&cli.command)?;
     Ok(())
 }
 
-pub fn load_nft() -> Result<(), AppError> {
-    let output = Command::new("nft")
-        .arg("-f")
-        .arg("/etc/nftables/blocklist/blocklist.nft")
+pub fn load_nft(command: &str) -> Result<(), AppError> {
+    let commands: Vec<&str> = command.split_whitespace().collect();
+    let Some(program) = commands.first() else {
+        return Err(AppError::new(
+            AppErrorKind::InvalidCommandError,
+            "no command provided!",
+        ));
+    };
+    let output = Command::new(program)
+        .args(commands.iter().skip(1))
         .output()?;
+
     if !output.status.success() {
         return Err(AppError::new(
             AppErrorKind::NftablesError,
