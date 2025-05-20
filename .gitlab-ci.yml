@@ -19,8 +19,6 @@ cache:
     - target/
     - ~/.cargo/registry
     - ~/.cargo/git
-  tags:
-    - alfonz
 
 # ---------- 1. fast checks on every commit ----------
 test:
@@ -45,8 +43,6 @@ test:
     paths:
       - target/$TARGET/release/${CI_PROJECT_NAME}${BINEXT}
     expire_in: 1 week
-  tags:
-    - alfonz
 
 # one job per target
 build:linux:
@@ -101,5 +97,5 @@ release_job:
       links: # attach every file in dist/
         - name: Linux binary
           filepath: "dist/${CI_PROJECT_NAME}-x86_64-unknown-linux-gnu.tar.gz"
-    tags:
-      - alfonz
+  tags:
+    - alfonz
