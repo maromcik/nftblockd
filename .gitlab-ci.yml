@@ -19,6 +19,8 @@ cache:
     - target/
     - ~/.cargo/registry
     - ~/.cargo/git
+  tags:
+    - alfonz
 
 # ---------- 1. fast checks on every commit ----------
 test:
@@ -29,6 +31,8 @@ test:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
     - cargo test --all
+  tags:
+    - alfonz
 
 # ---------- 2. build each requested target ----------
 .build-template: &build_template     # re-usable job definition
@@ -41,6 +45,8 @@ test:
     paths:
       - target/$TARGET/release/${CI_PROJECT_NAME}${BINEXT}
     expire_in: 1 week
+  tags:
+    - alfonz
 
 # one job per target
 build:linux:
@@ -49,7 +55,8 @@ build:linux:
     TARGET: x86_64-unknown-linux-gnu
     BINEXT: ""                       # Linux → no extension
                  # macOS → no extension
-
+  tags:
+    - alfonz
 # ---------- 3. zip / tar.gz artifacts ----------
 package:
   stage: package
@@ -71,7 +78,9 @@ package:
   artifacts:
     paths:
       - dist/
-    expire_in: 1 week
+    expire_in: One hour
+  tags:
+    - alfonz
 
 # ---------- 4. create / update a GitLab Release ----------
 release_job:
@@ -92,3 +101,5 @@ release_job:
       links: # attach every file in dist/
         - name: Linux binary
           filepath: "dist/${CI_PROJECT_NAME}-x86_64-unknown-linux-gnu.tar.gz"
+    tags:
+      - alfonz
