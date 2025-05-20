@@ -1,5 +1,4 @@
 # .gitlab-ci.yml ─ GitLab 16/17-compatible (May 2025)
-image: rust:1.87
 stages:
   - test
   - build
