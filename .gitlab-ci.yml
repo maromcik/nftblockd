@@ -24,7 +24,7 @@ cache:
 test:
   stage: test
   script:
-    - rustup component add rustfmt`
+    - rustup component add rustfmt
     - cargo fmt --all -- --check
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
@@ -35,7 +35,7 @@ test:
 # ---------- 2. build each requested target ----------
 .build-template: &build_template     # re-usable job definition
   stage: build
-  needs: ["test"]
+  needs: [ "test" ]
   image: rustembedded/cross:0.2.5    # cross = effortless cross-compiles
   script:
     - cross build --release --target $TARGET
@@ -50,7 +50,7 @@ build:linux:
   variables:
     TARGET: x86_64-unknown-linux-gnu
     BINEXT: ""                       # Linux → no extension
-                 # macOS → no extension
+    # macOS → no extension
   tags:
     - alfonz
 # ---------- 3. zip / tar.gz artifacts ----------
