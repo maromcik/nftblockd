@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug, Clone)]
 pub enum AppErrorKind {
     #[error("Request error")]
