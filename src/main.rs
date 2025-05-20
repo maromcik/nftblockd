@@ -44,21 +44,11 @@ struct Cli {
     filename: String,
 
     /// Endpoint for getting the ipv4 blocklist
-    #[clap(
-        short = '4',
-        long,
-        value_name = "IPv4_URL",
-        env = "BLOCKLIST_IPV4_URL",
-    )]
+    #[clap(short = '4', long, value_name = "IPv4_URL", env = "BLOCKLIST_IPV4_URL")]
     url4: String,
 
     /// Endpoint for getting the ipv6 blocklist
-    #[clap(
-        short = '6',
-        long,
-        value_name = "IPv6_URL",
-        env = "BLOCKLIST_IPV6_URL",
-    )]
+    #[clap(short = '6', long, value_name = "IPv6_URL", env = "BLOCKLIST_IPV6_URL")]
     url6: String,
 
     /// Nftables reload command

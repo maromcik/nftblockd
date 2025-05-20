@@ -88,18 +88,6 @@ impl ValidatedBlocklist {
             Self::IPv6(ips) => ips.is_empty(),
         }
     }
-}
-
-impl Display for ValidatedBlocklist {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::IPv4(ips) => write!(f, "elements = {{\n{}\n}}\n", ips.join(",\n")),
-            Self::IPv6(ips) => write!(f, "elements = {{\n{}\n}}\n", ips.join(",\n")),
-        }
-    }
-}
-
-impl ValidatedBlocklist {
     pub fn format_path(&self, dir: &str, filename: &str) -> String {
         match self {
             Self::IPv4(_) => format!("{}/{}_ipv4.nft", dir, filename),
@@ -112,5 +100,14 @@ impl ValidatedBlocklist {
         file.write_all(self.to_string().as_bytes())?;
         info!("blocklist saved to: {}", &path);
         Ok(())
+    }
+}
+
+impl Display for ValidatedBlocklist {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IPv4(ips) => write!(f, "elements = {{\n{}\n}}\n", ips.join(",\n")),
+            Self::IPv6(ips) => write!(f, "elements = {{\n{}\n}}\n", ips.join(",\n")),
+        }
     }
 }
