@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
+use nftables::schema::Nftables;
 use thiserror::Error;
 
 #[allow(clippy::enum_variant_names)]
@@ -16,6 +17,10 @@ pub enum AppErrorKind {
     NftablesError,
     #[error("invalid command")]
     InvalidCommandError,
+    #[error("internal iptrie error - broken library")]
+    IPTrieError,
+    #[error("ip parsing error")]
+    IpParseError,
 }
 
 #[derive(Error, Clone)]
@@ -54,5 +59,24 @@ impl From<ureq::Error> for AppError {
 impl From<std::io::Error> for AppError {
     fn from(value: std::io::Error) -> Self {
         Self::new(AppErrorKind::FileError, &value.to_string())
+    }
+}
+
+impl From<iptrie::IpPrefixError> for AppError {
+    fn from(value: iptrie::IpPrefixError) -> Self {
+        Self::new(AppErrorKind::IPTrieError, &value.to_string())
+    }
+}
+
+
+impl From<ipnetwork::IpNetworkError> for AppError {
+    fn from(value: ipnetwork::IpNetworkError) -> Self {
+        Self::new(AppErrorKind::IPTrieError, &value.to_string())
+    }
+}
+
+impl From<nftables::helper::NftablesError> for AppError {
+    fn from(value: nftables::helper::NftablesError) -> Self {
+        Self::new(AppErrorKind::NftablesError, &value.to_string())
     }
 }
