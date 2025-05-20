@@ -5,7 +5,7 @@ use crate::blocklist::{Blocklist, fetch_blocklist};
 use crate::error::{AppError, AppErrorKind};
 use clap::Parser;
 use env_logger::Env;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
@@ -63,12 +63,20 @@ struct Cli {
 }
 
 fn update(cli: &Cli) -> Result<(), AppError> {
-    Blocklist::IPv4(fetch_blocklist(&cli.url4)?)
-        .validate_blocklist()?
-        .store_blocklist(&cli.dir, &cli.filename)?;
-    Blocklist::IPv6(fetch_blocklist(&cli.url6)?)
-        .validate_blocklist()?
-        .store_blocklist(&cli.dir, &cli.filename)?;
+    if let Some(blocklist_ipv4) = fetch_blocklist(&cli.url4)? {
+        Blocklist::IPv4(blocklist_ipv4)
+            .validate_blocklist()?
+            .store_blocklist(&cli.dir, &cli.filename)?;
+    } else {
+        warn!("empty IPv4 blocklist fetched from: {}", cli.url4);
+    }
+    if let Some(blocklist_ipv6) = fetch_blocklist(&cli.url6)? {
+        Blocklist::IPv6(blocklist_ipv6)
+            .validate_blocklist()?
+            .store_blocklist(&cli.dir, &cli.filename)?;
+    } else {
+        warn!("empty IPv6 blocklist fetched from: {}", cli.url6);
+    }
     load_nft(&cli.command)?;
     Ok(())
 }

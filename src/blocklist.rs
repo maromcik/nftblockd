@@ -1,22 +1,18 @@
 use crate::error::{AppError, AppErrorKind};
-use ipnet::{Ipv4Net, Ipv6Net};
+use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::{debug, info, warn};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
-use std::net::{Ipv4Addr, Ipv6Addr};
 
-pub fn fetch_blocklist(endpoint: &str) -> Result<Vec<String>, AppError> {
+pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
     let body = ureq::get(endpoint)
         .header("Example-Header", "header value")
         .call()?
         .body_mut()
         .read_to_string()?;
     if body.is_empty() {
-        return Err(AppError::new(
-            AppErrorKind::EmptyBlocklistError,
-            format!("URL: {}", endpoint).as_str(),
-        ));
+        return Ok(None);
     }
     let blocklist = body
         .trim()
@@ -24,7 +20,7 @@ pub fn fetch_blocklist(endpoint: &str) -> Result<Vec<String>, AppError> {
         .map(|s| s.trim().to_string())
         .collect::<Vec<String>>();
     info!("blocklist fetched from: {}", endpoint);
-    Ok(blocklist)
+    Ok(Some(blocklist))
 }
 
 pub enum Blocklist {
@@ -35,21 +31,27 @@ pub enum Blocklist {
 impl Blocklist {
     pub fn validate_blocklist(self) -> Result<ValidatedBlocklist, AppError> {
         let validate_ipv4 = |ip: &str| -> bool {
-            if let (Err(ip_err), Err(_)) = (ip.parse::<Ipv4Addr>(), ip.parse::<Ipv4Net>()) {
-                warn!("error parsing IPv4: {}; {}", ip, ip_err);
-                false
-            } else {
-                debug!("valid IPv4: {}", ip);
-                true
+            match ip.parse::<Ipv4Network>() {
+                Ok(_) => {
+                    debug!("valid IPv4: {}", ip);
+                    true
+                }
+                Err(err) => {
+                    warn!("error parsing IPv4: {}; {}", ip, err);
+                    false
+                }
             }
         };
         let validate_ipv6 = |ip: &str| -> bool {
-            if let (Err(ip_err), Err(_)) = (ip.parse::<Ipv6Addr>(), ip.parse::<Ipv6Net>()) {
-                warn!("error parsing IPv6: {}; {}", ip, ip_err);
-                false
-            } else {
-                debug!("valid IPv6: {}", ip);
-                true
+            match ip.parse::<Ipv6Network>() {
+                Ok(_) => {
+                    debug!("valid IPv6: {}", ip);
+                    true
+                }
+                Err(err) => {
+                    warn!("error parsing IPv6: {}; {}", ip, err);
+                    false
+                }
             }
         };
         let blocklist = match self {
