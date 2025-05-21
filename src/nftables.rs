@@ -1,17 +1,12 @@
 use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
 use crate::network::BlocklistNetwork;
-use clap::builder::Str;
 use log::{debug, info};
-use nftables::expr::{
-    Expression, Fib, FibFlag, FibResult, Meta, MetaKey, NamedExpression, Payload, PayloadField,
-    Prefix,
-};
+use nftables::expr::{Expression, NamedExpression, Payload, PayloadField, Prefix};
 use nftables::schema::NfCmd::Delete;
 use nftables::schema::NfListObject::{Chain, Element, Rule, Set, Table};
 use nftables::schema::{NfObject, Nftables, SetType};
-use nftables::stmt::Drop;
-use nftables::stmt::{AnonymousCounter, Counter, Log, Match, Operator, Statement};
+use nftables::stmt::{Counter, Log, Match, Operator, Statement};
 use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{helper, schema, types};
 use std::borrow::Cow;
@@ -21,11 +16,6 @@ use std::fmt::Display;
 
 pub type SetElements<'a> = Vec<Expression<'a>>;
 
-pub enum SetPurpose {
-    Blocklist,
-    AntiLockout,
-}
-
 pub enum RuleDirection {
     Saddr,
     Daddr,
@@ -34,15 +24,6 @@ pub enum RuleDirection {
 pub enum RuleProto {
     Ip,
     Ip6,
-}
-
-impl Display for SetPurpose {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SetPurpose::Blocklist => write!(f, "blocklist"),
-            SetPurpose::AntiLockout => write!(f, "anti-lockout"),
-        }
-    }
 }
 
 impl Display for RuleDirection {
@@ -166,6 +147,7 @@ impl<'a> NftConfig<'a> {
         }))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn build_rule(
         table_name: &'a str,
         chain_name: &'a str,
@@ -198,10 +180,7 @@ impl<'a> NftConfig<'a> {
             })))
         }
 
-        expressions.extend(vec![
-            Statement::Counter(Counter::Anonymous(None)),
-            verdict,
-        ]);
+        expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
 
         NfObject::ListObject(Rule(schema::Rule {
             family: NfFamily::INet,
