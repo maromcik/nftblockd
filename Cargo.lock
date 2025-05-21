@@ -321,6 +321,7 @@ dependencies = [
  "ipnetwork",
  "log",
  "nftables",
+ "serde_json",
  "thiserror",
  "ureq",
 ]

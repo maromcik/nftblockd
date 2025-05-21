@@ -2,9 +2,8 @@ use std::borrow::Cow;
 use crate::error::{AppError, AppErrorKind};
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::{debug, info, warn};
-
-use nftables::{helper};
 use nftables::expr::{Expression, NamedExpression, Prefix};
+use crate::trie::{deduplicate, TrieNetwork};
 
 pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
     let body = ureq::get(endpoint)
@@ -32,42 +31,30 @@ pub enum Blocklist {
 
 impl Blocklist {
     pub fn validate_blocklist(self) -> Result<ValidatedBlocklist, AppError> {
-        let validate_ipv4 = |ip: &str| -> Option<Ipv4Network> {
-            match ip.parse::<Ipv4Network>() {
-                Ok(addr) => {
-                    debug!("valid IPv4: {}", ip);
-                    Some(addr)
-                }
-                Err(err) => {
-                    warn!("error parsing IPv4: {}; {}", ip, err);
-                    None
-                }
-            }
-        };
-        let validate_ipv6 = |ip: &str| -> Option<Ipv6Network> {
-            match ip.parse::<Ipv6Network>() {
-                Ok(addr) => {
-                    debug!("valid IPv6: {}", ip);
-                    Some(addr)
-                }
-                Err(err) => {
-                    warn!("error parsing IPv6: {}; {}", ip, err);
-                    None
-                }
-            }
-        };
+        fn validate<T: std::str::FromStr>(ips: Vec<String>) -> Vec<T>
+        where
+            <T as std::str::FromStr>::Err: std::fmt::Display,
+        {
+            ips.into_iter()
+                .filter_map(|ip| match ip.parse::<T>() {
+                    Ok(parsed) => {
+                        debug!("valid ip: {}", ip);
+                        Some(parsed)
+                    }
+                    Err(e) => {
+                        warn!("invalid ip: {}; {}", ip, e);
+                        None
+                    }
+                })
+                .collect()
+        }
+
         let blocklist = match self {
             Self::IPv4(parsed_ips) => ValidatedBlocklist::IPv4(
-                parsed_ips
-                    .into_iter()
-                    .filter_map(|ip| validate_ipv4(ip.as_str()))
-                    .collect::<Vec<Ipv4Network>>(),
+                validate(parsed_ips)
             ),
             Self::IPv6(parsed_ips) => ValidatedBlocklist::IPv6(
-                parsed_ips
-                    .into_iter()
-                    .filter_map(|ip| validate_ipv6(ip.as_str()))
-                    .collect::<Vec<Ipv6Network>>(),
+                validate(parsed_ips)
             ),
         };
         if blocklist.is_empty() {
@@ -93,49 +80,15 @@ impl ValidatedBlocklist {
             ValidatedBlocklist::IPv6(ips) => ips.sort_by_key(|ip| ip.prefix()),
         }
     }
+    
 
-
-    pub fn deduplicate<'a>(self) -> Result<DeduplicatedBlockList<'a>, AppError>{
+    pub fn deduplicate<'a>(self) -> Result<DeduplicatedBlockList, AppError>{
         match self {
-            ValidatedBlocklist::IPv4(mut ips) => {
-
-                ips.sort_by_key(|ip| ip.prefix());
-                let mut root = crate::trie::TrieNode::new();
-                let mut result = Vec::new();
-                for ip in ips {
-                    if root.insert(ip) {
-                        result.push(ip);
-                    }
-                }
-                
-                let nft_expressions = result
-                    .iter()
-                    .map(|ip| Expression::Named(NamedExpression::Prefix(Prefix {
-                        addr: Box::new(Expression::String(Cow::from(ip.network().to_string()))),
-                        len: ip.prefix() as u32,
-                    })))
-                    .collect::<Vec<Expression>>();
-                Ok(DeduplicatedBlockList::IPv4(nft_expressions))
+            ValidatedBlocklist::IPv4(ips) => {
+                Ok(DeduplicatedBlockList::IPv4(deduplicate(ips)))
             }
-            ValidatedBlocklist::IPv6(mut ips) => {
-                // let base_ip = "::/0".parse::<Ipv6Network>()?;
-                ips.sort_by_key(|ip| ip.prefix());
-                let mut root = crate::trie::TrieNode::new();
-                let mut result = Vec::new();
-                for ip in ips {
-                    if root.insert(ip) {
-                        result.push(ip);
-                    }
-                }
-
-                let nft_expressions = result
-                    .iter()
-                    .map(|ip| Expression::Named(NamedExpression::Prefix(Prefix {
-                        addr: Box::new(Expression::String(Cow::from(ip.network().to_string()))),
-                        len: ip.prefix() as u32,
-                    })))
-                    .collect::<Vec<Expression>>();
-                Ok(DeduplicatedBlockList::IPv6(nft_expressions))
+            ValidatedBlocklist::IPv6(ips) => {
+                Ok(DeduplicatedBlockList::IPv6(deduplicate(ips)))
             }
         }
     }
@@ -147,19 +100,42 @@ impl ValidatedBlocklist {
     }
 }
 
-pub enum DeduplicatedBlockList<'a> {
+pub enum DeduplicatedBlockList {
     
+    IPv4(Vec<Ipv4Network>),
+    IPv6(Vec<Ipv6Network>),
+}
+
+impl DeduplicatedBlockList {
+    pub fn to_nft_expression<'a>(self) ->NftExpressionBlocklist<'a> {
+        match self {
+            DeduplicatedBlockList::IPv4(ips) =>NftExpressionBlocklist::IPv4( Self::get_nft_expressions(ips)),
+            DeduplicatedBlockList::IPv6(ips) => NftExpressionBlocklist::IPv6(Self::get_nft_expressions(ips)),
+        }
+    }
+    
+    pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> Vec<Expression<'a>>
+    where T: TrieNetwork {
+        ips.iter()
+            .map(|ip| Expression::Named(NamedExpression::Prefix(Prefix {
+                addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
+                len: ip.network_prefix() as u32,
+            })))
+            .collect::<Vec<Expression>>()
+    }
+}
+
+pub enum NftExpressionBlocklist<'a> {
     IPv4(Vec<Expression<'a>>),
     IPv6(Vec<Expression<'a>>),
 }
 
-impl<'a> DeduplicatedBlockList<'a> {
+impl<'a> NftExpressionBlocklist<'a> {
     
     pub fn get_elements(self) -> Vec<Expression<'a>> {
         match self {
-            DeduplicatedBlockList::IPv4(exp) => exp,
-            DeduplicatedBlockList::IPv6(exp) => exp,
+            Self::IPv4(exp) => exp,
+            Self::IPv6(exp) => exp,
         }
     }
 }
-

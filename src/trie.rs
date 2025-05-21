@@ -25,6 +25,8 @@ pub trait TrieNetwork {
     fn network_addr(&self) -> BitIp;
     fn network_prefix(&self) -> u8;
     fn prefix_len(&self) -> u8;
+    
+    fn network_string(&self) -> String;
 }
 
 impl TrieNetwork for Ipv4Network {
@@ -38,6 +40,10 @@ impl TrieNetwork for Ipv4Network {
 
     fn prefix_len(&self) -> u8 {
         32
+    }
+
+    fn network_string(&self) -> String {
+        self.network().to_string()
     }
 }
 
@@ -53,6 +59,9 @@ impl TrieNetwork for Ipv6Network {
     fn prefix_len(&self) -> u8 {
         128
     }
+    fn network_string(&self) -> String {
+        self.network().to_string()
+    }   
 }
 
 #[derive(Default)]
@@ -69,7 +78,7 @@ impl TrieNode {
         }
     }
 
-    pub(crate) fn insert<T>(&mut self, ip: T) -> bool
+    pub(crate) fn insert<T>(&mut self, ip: &T) -> bool
     where
         T: TrieNetwork,
     {
@@ -96,4 +105,17 @@ impl TrieNode {
         node.children = Default::default(); // Drop more specific subnets
         true
     }
+}
+
+pub fn deduplicate<T>(mut ips: Vec<T>) -> Vec<T>
+where T: TrieNetwork {
+    ips.sort_by_key(|ip| ip.network_prefix());
+    let mut root = TrieNode::new();
+    let mut result = Vec::new();
+    for ip in ips {
+        if root.insert(&ip) {
+            result.push(ip);
+        }
+    }
+    result
 }

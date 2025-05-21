@@ -132,7 +132,7 @@ impl<'a> NftConfig<'a> {
 
     pub fn apply_nft(&self, ipv4_elements: Option<SetElements<'a>>, ipv6_elements: Option<SetElements<'a>>) -> Result<(), AppError> {
         let ruleset = self.generate_ruleset(ipv4_elements, ipv6_elements);
-        // println!("{}", serde_json::to_string_pretty(&ruleset).unwrap());
+        println!("{}", serde_json::to_string_pretty(&ruleset).unwrap());
         helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
