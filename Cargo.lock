@@ -229,25 +229,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
-name = "ipnet"
-version = "2.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
-
-[[package]]
 name = "ipnetwork"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf370abdafd54d13e54a620e8c3e1145f28e46cc9d704bc6d94414559df41763"
-
-[[package]]
-name = "iptrie"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d3e70916e16da178ce4d131f29381c51f52b33416f110827a31e954ee1ca8b1"
-dependencies = [
- "ipnet",
-]
 
 [[package]]
 name = "is_terminal_polyfill"
@@ -334,11 +319,8 @@ dependencies = [
  "clap",
  "env_logger",
  "ipnetwork",
- "iptrie",
  "log",
  "nftables",
- "serde",
- "serde_json",
  "thiserror",
  "ureq",
 ]

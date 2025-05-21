@@ -1,4 +1,3 @@
-use crate::blocklist::ValidatedBlocklist;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 
 pub enum BitIp {
@@ -98,12 +97,3 @@ impl TrieNode {
         true
     }
 }
-
-// fn apply_mask(ip: u32, prefix_len: u8) -> u32 {
-//     if prefix_len == 0 {
-//         return 0;
-//     }
-//     ip & (!0u32 << (32 - prefix_len))
-// }
-//
-//

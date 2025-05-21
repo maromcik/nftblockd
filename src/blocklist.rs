@@ -86,33 +86,6 @@ pub enum ValidatedBlocklist {
 }
 
 impl ValidatedBlocklist {
-
-    // fn deduplicate_ipv4(ips: &mut Vec<Ipv4Network>, base_ip: &Ipv4Prefix) -> Result<Ipv4RTrieSet, AppError> {
-    //     ips.sort_by_key(|ip| ip.prefix());
-    //     let mut trie = Ipv4RTrieSet::new();
-    //     for ip in ips {
-    //         let ip = Ipv4Prefix::new(ip.network(), ip.prefix())?;
-    //         let res = trie.lookup(&ip);
-    //         if res == base_ip {
-    //             trie.insert(ip);
-    //         }
-    //     }
-    //     Ok(trie)
-    // }
-    //
-    // fn deduplicate_ipv6(ips: &mut Vec<Ipv6Network>, base_ip: &Ipv6Prefix) -> Result<Ipv6RTrieSet, AppError> {
-    //     ips.sort_by_key(|ip| ip.prefix());
-    //     let mut trie = Ipv6RTrieSet::new();
-    //     for ip in ips {
-    //         let ip = Ipv6Prefix::new(ip.network(), ip.prefix())?;
-    //         let res = trie.lookup(&ip);
-    //         if res == base_ip {
-    //             trie.insert(ip);
-    //         }
-    //     }
-    //     Ok(trie)
-    // }
-
     pub fn sort_by_prefix(&mut self)
     {
         match self {
@@ -122,13 +95,9 @@ impl ValidatedBlocklist {
     }
 
 
-    pub fn deduplicate<'a>(mut self) -> Result<DeduplicatedBlockList<'a>, AppError>{
-        
-
+    pub fn deduplicate<'a>(self) -> Result<DeduplicatedBlockList<'a>, AppError>{
         match self {
             ValidatedBlocklist::IPv4(mut ips) => {
-                // let base_ip = "0.0.0.0/0".parse::<Ipv4Prefix>()?;
-                // let trie = Self::deduplicate_ipv4(&mut ips, &
 
                 ips.sort_by_key(|ip| ip.prefix());
                 let mut root = crate::trie::TrieNode::new();
@@ -141,7 +110,6 @@ impl ValidatedBlocklist {
                 
                 let nft_expressions = result
                     .iter()
-                    // .filter(|ip| *ip != &base_ip)
                     .map(|ip| Expression::Named(NamedExpression::Prefix(Prefix {
                         addr: Box::new(Expression::String(Cow::from(ip.network().to_string()))),
                         len: ip.prefix() as u32,
@@ -162,7 +130,6 @@ impl ValidatedBlocklist {
 
                 let nft_expressions = result
                     .iter()
-                    // .filter(|ip| **ip != base_ip)
                     .map(|ip| Expression::Named(NamedExpression::Prefix(Prefix {
                         addr: Box::new(Expression::String(Cow::from(ip.network().to_string()))),
                         len: ip.prefix() as u32,
