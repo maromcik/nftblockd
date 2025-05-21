@@ -1,9 +1,12 @@
-use ipnetwork::{Ipv4Network, Ipv6Network};
-use nftables::expr::Expression;
 use crate::error::{AppError, AppErrorKind};
 use crate::iptrie::deduplicate;
-use crate::network::validate_subnets;
-use crate::nft::get_nft_expressions;
+use crate::network::BlocklistNetwork;
+use crate::nftables::get_nft_expressions;
+use ipnetwork::{Ipv4Network, Ipv6Network};
+use log::{debug, warn};
+use nftables::expr::Expression;
+use std::fmt::Display;
+use std::str::FromStr;
 
 pub enum SubnetList {
     IPv4(Vec<String>),
@@ -62,7 +65,6 @@ impl DeduplicatedSubnetList {
             }
         }
     }
-
 }
 
 pub enum NftExpressionSubnetList<'a> {
@@ -77,4 +79,32 @@ impl<'a> NftExpressionSubnetList<'a> {
             Self::IPv6(exp) => exp,
         }
     }
+}
+
+pub fn parse_from_string(s: &str) -> Vec<String> {
+    s.split_whitespace().map(|s| s.to_string()).collect()
+}
+
+pub fn validate_subnets<T>(ips: Vec<String>) -> Vec<T>
+where
+    T: BlocklistNetwork + FromStr,
+    <T as FromStr>::Err: Display,
+{
+    ips.into_iter()
+        .filter_map(|ip| match ip.parse::<T>() {
+            Ok(parsed) => {
+                if parsed.is_network() {
+                    debug!("valid ip: {}", ip);
+                    Some(parsed)
+                } else {
+                    warn!("invalid ip: {}; not a network", ip);
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("ip could not be parsed: {}; {}", ip, e);
+                None
+            }
+        })
+        .collect()
 }

@@ -1,7 +1,7 @@
-use log::{info, warn};
 use crate::error::AppError;
-use crate::nft::{SetElements};
+use crate::nftables::SetElements;
 use crate::subnet::SubnetList;
+use log::{info, warn};
 
 pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
     let body = ureq::get(endpoint)

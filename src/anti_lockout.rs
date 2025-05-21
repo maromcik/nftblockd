@@ -1,7 +1,6 @@
 use crate::error::AppError;
-use crate::network::parse_from_string;
-use crate::nft::SetElements;
-use crate::subnet::SubnetList;
+use crate::nftables::SetElements;
+use crate::subnet::{SubnetList, parse_from_string};
 
 pub enum AntiLockoutSet {
     IPv4(String),

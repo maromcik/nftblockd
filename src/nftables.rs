@@ -1,3 +1,4 @@
+use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
 use crate::network::BlocklistNetwork;
 use log::debug;
@@ -9,20 +10,47 @@ use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{helper, schema, types};
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::env;
 
 pub type SetElements<'a> = Vec<Expression<'a>>;
 
 pub struct NftConfig<'a> {
-    pub table_name: &'a str,
-    pub prerouting_chain: &'a str,
-    pub postrouting_chain: &'a str,
-    pub blocklist_set_name: &'a str,
-    pub anti_lockout_set_name: &'a str,
+    pub table_name: String,
+    pub prerouting_chain: String,
+    pub postrouting_chain: String,
+    pub blocklist_set_name: String,
+    pub anti_lockout_set_name: String,
     pub anti_lockout_ipv4: Option<SetElements<'a>>,
     pub anti_lockout_ipv6: Option<SetElements<'a>>,
 }
 
 impl<'a> NftConfig<'a> {
+    pub fn new() -> Result<Self, AppError> {
+        let anti_lockout_ipv4_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV4").ok();
+        let anti_lockout_ipv4 = anti_lockout_ipv4_string
+            .map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout())
+            .transpose()?;
+
+        let anti_lockout_ipv6_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV6").ok();
+        let anti_lockout_ipv6 = anti_lockout_ipv6_string
+            .map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout())
+            .transpose()?;
+
+        Ok(NftConfig {
+            table_name: env::var("NFTABLES_BLOCKLIST_TABLE_NAME").unwrap_or("blocklist".into()),
+            prerouting_chain: env::var("NFTABLES_BLOCKLIST_PREROUTING_CHAIN_NAME")
+                .unwrap_or("prerouting".into()),
+            postrouting_chain: env::var("NFTABLES_BLOCKLIST_POSTROUTING_CHAIN_NAME")
+                .unwrap_or("postrouting".into()),
+            blocklist_set_name: env::var("NFTABLES_BLOCKLIST_BLOCKLIST_SET_NAME")
+                .unwrap_or("blocklist_set".into()),
+            anti_lockout_set_name: env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_SET_NAME")
+                .unwrap_or("anti_lockout_set".into()),
+            anti_lockout_ipv4,
+            anti_lockout_ipv6,
+        })
+    }
+
     fn delete_table(table_name: &'a str) -> NfObject<'a> {
         NfObject::CmdObject(Delete(Table(schema::Table {
             family: NfFamily::INet,
@@ -91,7 +119,7 @@ impl<'a> NftConfig<'a> {
 
     pub fn delete_table_and_apply(&self) -> Result<(), AppError> {
         let ruleset = Nftables {
-            objects: Cow::from(vec![NftConfig::delete_table(self.table_name)]),
+            objects: Cow::from(vec![NftConfig::delete_table(self.table_name.as_str())]),
         };
         helper::apply_ruleset(&ruleset)?;
         Ok(())
@@ -107,38 +135,38 @@ impl<'a> NftConfig<'a> {
         let ipv4_anti_lockout_set_name = format!("{}_ipv4", self.anti_lockout_set_name);
         let ipv6_anti_lockout_set_name = format!("{}_ipv6", self.anti_lockout_set_name);
         let mut objects = vec![
-            NftConfig::build_table(self.table_name),
-            NftConfig::delete_table(self.table_name),
-            NftConfig::build_table(self.table_name),
+            NftConfig::build_table(self.table_name.as_str()),
+            NftConfig::delete_table(self.table_name.as_str()),
+            NftConfig::build_table(self.table_name.as_str()),
             NftConfig::build_chain(
-                self.table_name,
-                self.prerouting_chain,
+                self.table_name.as_str(),
+                self.prerouting_chain.as_str(),
                 NfHook::Prerouting,
                 -300,
             ),
             NftConfig::build_chain(
-                self.table_name,
-                self.postrouting_chain,
+                self.table_name.as_str(),
+                self.postrouting_chain.as_str(),
                 NfHook::Postrouting,
                 300,
             ),
             NftConfig::build_set(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv4_anti_lockout_set_name.clone(),
                 &SetType::Ipv4Addr,
             ),
             NftConfig::build_set(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv6_anti_lockout_set_name.clone(),
                 &SetType::Ipv6Addr,
             ),
             NftConfig::build_set(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv4_blocklist_set_name.clone(),
                 &SetType::Ipv4Addr,
             ),
             NftConfig::build_set(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv6_blocklist_set_name.clone(),
                 &SetType::Ipv6Addr,
             ),
@@ -146,7 +174,7 @@ impl<'a> NftConfig<'a> {
 
         if let Some(ipv4_elements) = &self.anti_lockout_ipv4 {
             objects.push(Self::build_set_elements(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv4_anti_lockout_set_name,
                 ipv4_elements,
             ));
@@ -154,7 +182,7 @@ impl<'a> NftConfig<'a> {
 
         if let Some(ipv6_elements) = &self.anti_lockout_ipv6 {
             objects.push(Self::build_set_elements(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv6_anti_lockout_set_name,
                 ipv6_elements,
             ));
@@ -162,7 +190,7 @@ impl<'a> NftConfig<'a> {
 
         if let Some(ipv4_elements) = ipv4_elements {
             objects.push(Self::build_set_elements(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv4_blocklist_set_name,
                 ipv4_elements,
             ));
@@ -170,7 +198,7 @@ impl<'a> NftConfig<'a> {
 
         if let Some(ipv6_elements) = ipv6_elements {
             objects.push(Self::build_set_elements(
-                self.table_name,
+                self.table_name.as_str(),
                 ipv6_blocklist_set_name,
                 ipv6_elements,
             ));
