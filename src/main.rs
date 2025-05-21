@@ -4,9 +4,10 @@ mod error;
 mod iptrie;
 mod network;
 mod nft;
+mod subnet;
 
 use crate::anti_lockout::AntiLockoutSet;
-use crate::blocklist::{Blocklist, fetch_blocklist};
+use crate::blocklist::{update_ipv4, update_ipv6};
 use crate::error::AppError;
 use crate::nft::{NftConfig, SetElements};
 use clap::Parser;
@@ -60,34 +61,6 @@ struct Cli {
     delete: bool,
 }
 
-fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
-    if let Some(blocklist_ipv4) = fetch_blocklist(url)? {
-        let elems = Blocklist::IPv4(blocklist_ipv4)
-            .validate_blocklist()?
-            .deduplicate()?
-            .to_nft_expression()
-            .get_elements();
-        Ok(Some(elems))
-    } else {
-        warn!("empty IPv4 blocklist fetched from: {}", url);
-        Ok(None)
-    }
-}
-
-fn update_ipv6<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
-    if let Some(blocklist_ipv6) = fetch_blocklist(url)? {
-        let elems = Blocklist::IPv6(blocklist_ipv6)
-            .validate_blocklist()?
-            .deduplicate()?
-            .to_nft_expression()
-            .get_elements();
-        Ok(Some(elems))
-    } else {
-        warn!("empty IPv6 blocklist fetched from: {}", url);
-        Ok(None)
-    }
-}
-
 fn update(cli: &Cli, config: &NftConfig) -> Result<(), AppError> {
     let ipv4 = if let Some(url) = cli.url.url4.as_ref() {
         update_ipv4(url.as_str())?
@@ -106,17 +79,17 @@ fn update(cli: &Cli, config: &NftConfig) -> Result<(), AppError> {
 }
 
 fn main() {
+    dotenvy::dotenv().ok();
     let cli = Cli::parse();
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
-
-    let anti_lockout_ipv4_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV4").ok();
-    let anti_lockout_ipv4 =
-        anti_lockout_ipv4_string.map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout());
-
-    let anti_lockout_ipv6_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV6").ok();
-    let anti_lockout_ipv6 =
-        anti_lockout_ipv6_string.map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout());
-
+    let env = Env::new().filter("NFTABLES_BLOCKLIST_LOG_LEVEL");
+    env_logger::init_from_env(env);
+    let (anti_lockout_ipv4, anti_lockout_ipv6) = match parse_anti_lockout_env() {
+        Ok(sets) => sets,
+        Err(e) => {
+            error!("{}", e);
+            exit(1);
+        }
+    };
     let config = NftConfig {
         table_name: &env::var("NFTABLES_BLOCKLIST_TABLE_NAME").unwrap_or("blocklist".into()),
         prerouting_chain: &env::var("NFTABLES_BLOCKLIST_PREROUTING_CHAIN_NAME")
@@ -154,4 +127,19 @@ fn main() {
 
         sleep(Duration::from_secs(cli.interval));
     }
+}
+
+fn parse_anti_lockout_env<'a>()
+-> Result<(Option<SetElements<'a>>, Option<SetElements<'a>>), AppError> {
+    let anti_lockout_ipv4_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV4").ok();
+    let anti_lockout_ipv4 = anti_lockout_ipv4_string
+        .map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout())
+        .transpose()?;
+
+    let anti_lockout_ipv6_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV6").ok();
+    let anti_lockout_ipv6 = anti_lockout_ipv6_string
+        .map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout())
+        .transpose()?;
+
+    Ok((anti_lockout_ipv4, anti_lockout_ipv6))
 }

@@ -1,10 +1,7 @@
-use crate::error::{AppError, AppErrorKind};
-use crate::network::{validate_subnets};
-use crate::iptrie::deduplicate;
-use ipnetwork::{Ipv4Network, Ipv6Network};
-use log::{info};
-use nftables::expr::{Expression};
-use crate::nft::get_nft_expressions;
+use log::{info, warn};
+use crate::error::AppError;
+use crate::nft::{SetElements};
+use crate::subnet::SubnetList;
 
 pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
     let body = ureq::get(endpoint)
@@ -24,76 +21,30 @@ pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> 
     Ok(Some(blocklist))
 }
 
-pub enum Blocklist {
-    IPv4(Vec<String>),
-    IPv6(Vec<String>),
-}
-
-impl Blocklist {
-    pub fn validate_blocklist(self) -> Result<ValidatedBlocklist, AppError> {
-        let blocklist = match self {
-            Self::IPv4(parsed_ips) => ValidatedBlocklist::IPv4(validate_subnets(parsed_ips)),
-            Self::IPv6(parsed_ips) => ValidatedBlocklist::IPv6(validate_subnets(parsed_ips)),
-        };
-        if blocklist.is_empty() {
-            return Err(AppError::new(
-                AppErrorKind::NoAddressesParsedError,
-                "the blocklist is empty after parsing",
-            ));
-        };
-        Ok(blocklist)
+pub fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
+    if let Some(blocklist_ipv4) = fetch_blocklist(url)? {
+        let elems = SubnetList::IPv4(blocklist_ipv4)
+            .validate_blocklist()?
+            .deduplicate()?
+            .to_nft_expression()
+            .get_elements();
+        Ok(Some(elems))
+    } else {
+        warn!("empty IPv4 blocklist fetched from: {}", url);
+        Ok(None)
     }
 }
 
-pub enum ValidatedBlocklist {
-    IPv4(Vec<Ipv4Network>),
-    IPv6(Vec<Ipv6Network>),
-}
-
-impl ValidatedBlocklist {
-    pub fn deduplicate(self) -> Result<DeduplicatedBlockList, AppError> {
-        match self {
-            ValidatedBlocklist::IPv4(ips) => Ok(DeduplicatedBlockList::IPv4(deduplicate(ips))),
-            ValidatedBlocklist::IPv6(ips) => Ok(DeduplicatedBlockList::IPv6(deduplicate(ips))),
-        }
-    }
-    fn is_empty(&self) -> bool {
-        match self {
-            Self::IPv4(ips) => ips.is_empty(),
-            Self::IPv6(ips) => ips.is_empty(),
-        }
-    }
-}
-
-pub enum DeduplicatedBlockList {
-    IPv4(Vec<Ipv4Network>),
-    IPv6(Vec<Ipv6Network>),
-}
-
-impl DeduplicatedBlockList {
-    pub fn to_nft_expression<'a>(self) -> NftExpressionBlocklist<'a> {
-        match self {
-            DeduplicatedBlockList::IPv4(ips) => {
-                NftExpressionBlocklist::IPv4(get_nft_expressions(ips))
-            }
-            DeduplicatedBlockList::IPv6(ips) => {
-                NftExpressionBlocklist::IPv6(get_nft_expressions(ips))
-            }
-        }
-    }
-    
-}
-
-pub enum NftExpressionBlocklist<'a> {
-    IPv4(Vec<Expression<'a>>),
-    IPv6(Vec<Expression<'a>>),
-}
-
-impl<'a> NftExpressionBlocklist<'a> {
-    pub fn get_elements(self) -> Vec<Expression<'a>> {
-        match self {
-            Self::IPv4(exp) => exp,
-            Self::IPv6(exp) => exp,
-        }
+pub fn update_ipv6<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
+    if let Some(blocklist_ipv6) = fetch_blocklist(url)? {
+        let elems = SubnetList::IPv6(blocklist_ipv6)
+            .validate_blocklist()?
+            .deduplicate()?
+            .to_nft_expression()
+            .get_elements();
+        Ok(Some(elems))
+    } else {
+        warn!("empty IPv6 blocklist fetched from: {}", url);
+        Ok(None)
     }
 }

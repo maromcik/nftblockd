@@ -151,7 +151,7 @@ impl<'a> NftConfig<'a> {
                 ipv4_elements,
             ));
         }
-        
+
         if let Some(ipv6_elements) = &self.anti_lockout_ipv6 {
             objects.push(Self::build_set_elements(
                 self.table_name,
