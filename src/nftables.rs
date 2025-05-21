@@ -1,7 +1,7 @@
 use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
 use crate::network::BlocklistNetwork;
-use log::debug;
+use log::{debug, info};
 use nftables::expr::{Expression, NamedExpression, Prefix};
 use nftables::schema::NfCmd::Delete;
 use nftables::schema::NfListObject::{Chain, Element, Set, Table};
@@ -122,6 +122,7 @@ impl<'a> NftConfig<'a> {
             objects: Cow::from(vec![NftConfig::delete_table(self.table_name.as_str())]),
         };
         helper::apply_ruleset(&ruleset)?;
+        info!("the `{}` table and all its contents have been deleted", self.table_name);
         Ok(())
     }
 

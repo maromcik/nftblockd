@@ -6,6 +6,7 @@ mod network;
 mod nftables;
 mod subnet;
 
+use std::env;
 use crate::blocklist::{update_ipv4, update_ipv6};
 use crate::error::AppError;
 use crate::nftables::NftConfig;
@@ -54,6 +55,13 @@ struct Cli {
     )]
     interval: u64,
 
+    #[clap(
+        short,
+        long,
+        value_name = "ENV_FILE",
+    )]
+    env_file: Option<String>,
+
     /// If true, deletes the existing blocklist table and exits.
     #[arg(short = 'd', long = "delete", action = clap::ArgAction::SetTrue)]
     delete: bool,
@@ -72,14 +80,18 @@ fn update(cli: &Cli, config: &NftConfig) -> Result<(), AppError> {
     };
 
     config.apply_nft(ipv4, ipv6)?;
-
+    info!("the `{}` table successfully loaded", config.table_name);
     Ok(())
 }
 
 fn main() {
-    dotenvy::dotenv().ok();
-    let cli = Cli::parse();
-    let env = Env::new().filter("NFTABLES_BLOCKLIST_LOG_LEVEL");
+    let mut cli = Cli::parse();
+    if let Some(env_file) = cli.env_file {
+        dotenvy::from_filename(env_file).expect("failed to load .env file");
+        cli = Cli::parse();
+    }
+    
+    let env = Env::new().filter_or("NFTABLES_BLOCKLIST_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
     let config = match NftConfig::new() {
@@ -93,7 +105,7 @@ fn main() {
     if cli.delete {
         let _ = config
             .delete_table_and_apply()
-            .map_err(|e| warn!("probably already deleted: {}", e));
+            .map_err(|e| warn!("the `{}` table (probably) already deleted: {}", config.table_name, e));
         return;
     }
 
