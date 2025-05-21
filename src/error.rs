@@ -8,16 +8,10 @@ pub enum AppErrorKind {
     RequestError,
     #[error("File error")]
     FileError,
-    #[error("Empty blocklist")]
-    EmptyBlocklistError,
     #[error("No IPs parsed")]
     NoAddressesParsedError,
     #[error("nftables failed")]
     NftablesError,
-    #[error("invalid command")]
-    InvalidCommandError,
-    #[error("ip parsing error")]
-    IpParseError,
 }
 
 #[derive(Error, Clone)]
@@ -58,7 +52,6 @@ impl From<std::io::Error> for AppError {
         Self::new(AppErrorKind::FileError, &value.to_string())
     }
 }
-
 
 impl From<nftables::helper::NftablesError> for AppError {
     fn from(value: nftables::helper::NftablesError) -> Self {

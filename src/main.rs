@@ -1,38 +1,49 @@
+mod anti_lockout;
 mod blocklist;
 mod error;
+mod iptrie;
+mod network;
 mod nft;
-mod trie;
 
-
+use crate::anti_lockout::AntiLockoutSet;
 use crate::blocklist::{Blocklist, fetch_blocklist};
-use crate::error::{AppError, AppErrorKind};
+use crate::error::AppError;
+use crate::nft::{NftConfig, SetElements};
 use clap::Parser;
 use env_logger::Env;
-use log::{debug, error, info, warn};
-use std::process::Command;
+use log::{error, info, warn};
+use std::env;
+use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
-use crate::nft::{NftConfig, SetElements};
 
 #[derive(Debug, clap::Args)]
-#[group(required = true, multiple = true)]
-pub struct CommandGroup {
+#[group(multiple = true)]
+pub struct UrlGroup {
     /// Endpoint for getting the ipv4 blocklist
-    #[clap(short = '4', long, value_name = "IPv4_URL", env = "BLOCKLIST_IPV4_URL")]
+    #[clap(
+        short = '4',
+        long,
+        value_name = "IPv4_URL",
+        env = "NFTABLES_BLOCKLIST_IPV4_URL"
+    )]
     url4: Option<String>,
 
     /// Endpoint for getting the ipv6 blocklist
-    #[clap(short = '6', long, value_name = "IPv6_URL", env = "BLOCKLIST_IPV6_URL")]
+    #[clap(
+        short = '6',
+        long,
+        value_name = "IPv6_URL",
+        env = "NFTABLES_BLOCKLIST_IPV6_URL"
+    )]
     url6: Option<String>,
 }
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-
     #[clap(flatten)]
-    url: CommandGroup,
-
+    url: UrlGroup,
 
     /// Interval in seconds to update the blocklist
     #[clap(
@@ -40,39 +51,13 @@ struct Cli {
         long,
         value_name = "INTERVAL",
         default_value = "30",
-        env = "BLOCKLIST_INTERVAL"
+        env = "NFTABLES_BLOCKLIST_INTERVAL"
     )]
     interval: u64,
 
-    /// Output directory for the blocklist files
-    #[clap(
-        short,
-        long,
-        value_name = "PATH_TO_DIR",
-        default_value = "/etc/nftables/blocklist",
-        env = "BLOCKLIST_DIR"
-    )]
-    dir: String,
-
-    /// Filenames for the blocklist set files, will be suffixed wth ipv4/ipv6
-    #[clap(
-        short,
-        long,
-        value_name = "SET_FILENAME",
-        default_value = "blocklist_set",
-        env = "BLOCKLIST_FILENAME"
-    )]
-    filename: String,
-    
-    /// Nftables reload command
-    #[clap(
-        short = 'c',
-        long,
-        value_name = "COMMAND",
-        default_value = "nft -f /etc/nftables/blocklist/blocklist.nft",
-        env = "BLOCKLIST_COMMAND"
-    )]
-    command: String,
+    /// If true, deletes the existing blocklist table and exits.
+    #[arg(short = 'd', long = "delete", action = clap::ArgAction::SetTrue)]
+    delete: bool,
 }
 
 fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
@@ -103,83 +88,70 @@ fn update_ipv6<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
     }
 }
 
-fn update(cli: &Cli, config:  &NftConfig) -> Result<(), AppError> {
+fn update(cli: &Cli, config: &NftConfig) -> Result<(), AppError> {
     let ipv4 = if let Some(url) = cli.url.url4.as_ref() {
         update_ipv4(url.as_str())?
-    } else { None };
+    } else {
+        None
+    };
     let ipv6 = if let Some(url) = cli.url.url6.as_ref() {
         update_ipv6(url.as_str())?
-    } else { None };
-    config.apply_nft(ipv4, ipv6)?;
-    Ok(())
-}
-
-pub fn load_nft(command: &str) -> Result<(), AppError> {
-    let commands: Vec<&str> = command.split_whitespace().collect();
-    let Some(program) = commands.first() else {
-        return Err(AppError::new(
-            AppErrorKind::InvalidCommandError,
-            "no command provided!",
-        ));
+    } else {
+        None
     };
-    let output = Command::new(program)
-        .args(commands.iter().skip(1))
-        .output()?;
-    debug!("running command: {}", command);
-    debug!("stdout: {}", String::from_utf8_lossy(&output.stdout).trim());
-    debug!("stderr: {}", String::from_utf8_lossy(&output.stderr).trim());
-    if !output.status.success() {
-        return Err(AppError::new(
-            AppErrorKind::NftablesError,
-            format!(
-                "nftables reload failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            )
-            .as_str(),
-        ));
-    }
-    info!("nftables successfully reloaded");
+
+    config.apply_nft(ipv4, ipv6)?;
+
     Ok(())
 }
 
 fn main() {
+    let cli = Cli::parse();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    // let subnets = vec![
-    //     "192.168.1.0/24",
-    //     "192.168.0.0/16",
-    //     "10.1.0.0/16",
-    //     "10.0.0.0/8",
-    //     "172.16.5.0/24",
-    //     "172.16.0.0/16",
-    //     "8.8.8.0/24",
-    // ].iter().map(|s| Ipv4Network::from_str(s).unwrap()).collect::<Vec<_>>();
-    //
-    // let deduped = deduplicate_ipv4(subnets);
-    //
-    // for subnet in deduped {
-    //     println!("{}", subnet);
-    // }
+    let anti_lockout_ipv4_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV4").ok();
+    let anti_lockout_ipv4 =
+        anti_lockout_ipv4_string.map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout());
+
+    let anti_lockout_ipv6_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV6").ok();
+    let anti_lockout_ipv6 =
+        anti_lockout_ipv6_string.map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout());
 
     let config = NftConfig {
-        table_name: "blocklist",
-        prerouting_chain: "prerouting",
-        postrouting_chain: "postrouting",
-        blocklist_set_name: "blocklist_set",
-        anti_lockout_set_name: "anti_lockout_set",
+        table_name: &env::var("NFTABLES_BLOCKLIST_TABLE_NAME").unwrap_or("blocklist".into()),
+        prerouting_chain: &env::var("NFTABLES_BLOCKLIST_PREROUTING_CHAIN_NAME")
+            .unwrap_or("prerouting".into()),
+        postrouting_chain: &env::var("NFTABLES_BLOCKLIST_POSTROUTING_CHAIN_NAME")
+            .unwrap_or("postrouting".into()),
+        blocklist_set_name: &env::var("NFTABLES_BLOCKLIST_BLOCKLIST_SET_NAME")
+            .unwrap_or("blocklist_set".into()),
+        anti_lockout_set_name: &env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_SET_NAME")
+            .unwrap_or("anti_lockout_set".into()),
+        anti_lockout_ipv4,
+        anti_lockout_ipv6,
     };
-    
-    let cli = Cli::parse();
+
+    if cli.delete {
+        let _ = config
+            .delete_table_and_apply()
+            .map_err(|e| warn!("probably already deleted: {}", e));
+        return;
+    }
+
+    if cli.url.url4.is_none() && cli.url.url6.is_none() {
+        warn!("no url provided");
+        return;
+    }
+
     loop {
         match update(&cli, &config) {
             Ok(_) => info!("finished"),
             Err(e) => {
                 error!("{}", e);
-                break;
+                exit(1);
             }
         }
 
         sleep(Duration::from_secs(cli.interval));
     }
 }
-
