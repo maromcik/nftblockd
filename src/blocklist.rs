@@ -6,7 +6,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use clap::builder::Str;
-use iptrie::{IpLCTrieSet, Ipv4LCTrieSet, Ipv4Prefix, Ipv4RTrieSet, Ipv6Prefix, Ipv6RTrieSet};
+use iptrie::{IpLCTrieSet, IpPrefix, Ipv4LCTrieSet, Ipv4Prefix, Ipv4RTrieSet, Ipv6Prefix, Ipv6RTrieSet};
 use iptrie::set::LCTrieSet;
 use nftables::{expr, helper};
 use nftables::expr::Expression;
@@ -93,34 +93,52 @@ pub enum ValidatedBlocklist {
 
 impl ValidatedBlocklist {
 
+    fn deduplicate_ipv4(ips: &mut Vec<Ipv4Network>, base_ip: &Ipv4Prefix) -> Result<Ipv4RTrieSet, AppError> {
+        ips.sort_by_key(|ip| ip.prefix());
+        let mut trie = Ipv4RTrieSet::new();
+        for ip in ips {
+            let ip = Ipv4Prefix::new(ip.network(), ip.prefix())?;
+            let res = trie.lookup(&ip);
+            if res == base_ip {
+                trie.insert(ip);
+            }
+        }
+        Ok(trie)
+    }
+    
+    fn deduplicate_ipv6(ips: &mut Vec<Ipv6Network>, base_ip: &Ipv6Prefix) -> Result<Ipv6RTrieSet, AppError> {
+        ips.sort_by_key(|ip| ip.prefix());
+        let mut trie = Ipv6RTrieSet::new();
+        for ip in ips {
+            let ip = Ipv6Prefix::new(ip.network(), ip.prefix())?;
+            let res = trie.lookup(&ip);
+            if res == base_ip {
+                trie.insert(ip);
+            }
+        }
+        Ok(trie)
+    }
+    
     pub fn deduplicate<'a>(self) -> Result<DeduplicatedBlockList<'a>, AppError>{
         match self {
             ValidatedBlocklist::IPv4(mut ips) => {
                 let base_ip = "0.0.0.0/0".parse::<Ipv4Prefix>()?;
-                ips.sort_by_key(|ip| ip.prefix());
-                let mut trie = Ipv4RTrieSet::new();
-                for ip in ips {
-                    let ip = Ipv4Prefix::new(ip.network(), ip.prefix())?;
-                    let res = trie.lookup(&ip);
-                    if res == &base_ip {
-                        trie.insert(ip);
-                    }
-                }
-                let nft_expressions = trie.iter().map(|ip| expr::Expression::String(Cow::from(ip.to_string()))).collect::<Vec<expr::Expression>>();
+                let trie = Self::deduplicate_ipv4(&mut ips, &base_ip)?;
+                let nft_expressions = trie
+                    .iter()
+                    .filter(|ip| *ip != &base_ip)
+                    .map(|ip| Expression::String(Cow::from(ip.to_string())))
+                    .collect::<Vec<Expression>>();
                 Ok(DeduplicatedBlockList::IPv4(nft_expressions))
             }
             ValidatedBlocklist::IPv6(mut ips) => {
                 let base_ip = "::/0".parse::<Ipv6Prefix>()?;
-                ips.sort_by_key(|ip| ip.prefix());
-                let mut trie = Ipv6RTrieSet::new();
-                for ip in ips {
-                    let ip = Ipv6Prefix::new(ip.network(), ip.prefix())?;
-                    let res = trie.lookup(&ip);
-                    if res == &base_ip {
-                        trie.insert(ip);
-                    }
-                }
-                let nft_expressions = trie.iter().map(|ip| expr::Expression::String(Cow::from(ip.to_string()))).collect::<Vec<expr::Expression>>();
+                let trie = Self::deduplicate_ipv6(&mut ips, &base_ip)?;
+                let nft_expressions = trie
+                    .iter()
+                    .filter(|ip| **ip != base_ip)
+                    .map(|ip| Expression::String(Cow::from(ip.to_string())))
+                    .collect::<Vec<Expression>>();
                 Ok(DeduplicatedBlockList::IPv6(nft_expressions))
             }
         }
@@ -131,58 +149,21 @@ impl ValidatedBlocklist {
             Self::IPv6(ips) => ips.is_empty(),
         }
     }
-    // pub fn format_path(&self, dir: &str, filename: &str) -> String {
-    //     match self {
-    //         Self::IPv4(_) => format!("{}/{}_ipv4.nft", dir, filename),
-    //         Self::IPv6(_) => format!("{}/{}_ipv6.nft", dir, filename),
-    //     }
-    // }
-    // pub fn store_blocklist(&self, dir: &str, filename: &str) -> Result<(), AppError> {
-    //     let path = self.format_path(dir, filename);
-    //     let mut file = File::create(&path)?;
-    //     file.write_all(self.to_string().as_bytes())?;
-    //     info!("blocklist saved to: {}", &path);
-    //     Ok(())
-    // }
-    //
-    // pub fn to_strings(&self) -> Vec<String> {
-    //     match self {
-    //         Self::IPv4(ips) => ips.iter().map(|ip| ip.to_string()).collect::<Vec<String>>(),
-    //         Self::IPv6(ips) => ips.iter().map(|ip| ip.to_string()).collect::<Vec<String>>(),
-    //     }
-    // }
-
 }
 
-#[derive(Default)]
 pub enum DeduplicatedBlockList<'a> {
     
     IPv4(Vec<Expression<'a>>),
     IPv6(Vec<Expression<'a>>),
-    #[default]
-    None
 }
-
 
 impl<'a> DeduplicatedBlockList<'a> {
     
-    pub fn get_elements(self) -> std::vec::Vec<nftables::expr::Expression<'a>> {
+    pub fn get_elements(self) -> Vec<Expression<'a>> {
         match self {
-            DeduplicatedBlockList::IPv4(mut exp) => {exp.remove(0); exp}
-            DeduplicatedBlockList::IPv6(mut exp) => {exp.remove(0); exp}
-            DeduplicatedBlockList::None => {vec![]}
+            DeduplicatedBlockList::IPv4(exp) => exp,
+            DeduplicatedBlockList::IPv6(exp) => exp,
         }
     }
 }
-
-
-// impl Display for ValidatedBlocklist {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         let converted = self.to_strings();
-//         match self {
-//             Self::IPv4(ips) => write!(f, "elements = {{\n{}\n}}\n", converted.join(",\n")),
-//             Self::IPv6(ips) => write!(f, "elements = {{\n{}\n}}\n", converted.join(",\n")),
-//         }
-//     }
-// }
 

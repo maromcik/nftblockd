@@ -6,7 +6,7 @@ mod trie;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::net::Ipv4Addr;
-use crate::blocklist::{Blocklist, fetch_blocklist};
+use crate::blocklist::{Blocklist, fetch_blocklist, DeduplicatedBlockList};
 use crate::error::{AppError, AppErrorKind};
 use clap::Parser;
 use env_logger::Env;
@@ -16,8 +16,9 @@ use std::thread::sleep;
 use std::time::Duration;
 use ipnetwork::{IpNetwork, Ipv4Network};
 use iptrie::{Ipv4LCTrieSet, Ipv4Prefix, Ipv4RTrieSet};
+use nftables::expr::Expression;
 use ureq::config::AutoHeaderValue::Default;
-use crate::nft::NftConfig;
+use crate::nft::{NftConfig, SetElements};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -71,26 +72,36 @@ struct Cli {
     command: String,
 }
 
-fn update(cli: &Cli, config:  &NftConfig) -> Result<(), AppError> {
-    let a = if let Some(blocklist_ipv4) = fetch_blocklist(&cli.url4)? {
+fn update_ipv4<'a>(cli: &Cli) -> Result<SetElements<'a>, AppError> {
+    if let Some(blocklist_ipv4) = fetch_blocklist(&cli.url4)? {
         let elems = Blocklist::IPv4(blocklist_ipv4)
             .validate_blocklist()?
-            .deduplicate()?;
-        Some(elems)
+            .deduplicate()?
+            .get_elements();
+        Ok(elems)
     } else {
         warn!("empty IPv4 blocklist fetched from: {}", cli.url4);
-        None
-    };
-    let b = if let Some(blocklist_ipv6) = fetch_blocklist(&cli.url6)? {
+        Ok(Vec::default())
+    }
+}
+
+fn update_ipv6<'a>(cli: &Cli) -> Result<SetElements<'a>, AppError> {
+    if let Some(blocklist_ipv6) = fetch_blocklist(&cli.url6)? {
         let elems = Blocklist::IPv6(blocklist_ipv6)
             .validate_blocklist()?
-            .deduplicate()?;
-        Some(elems)
+            .deduplicate()?
+            .get_elements();
+        Ok(elems)
     } else {
         warn!("empty IPv6 blocklist fetched from: {}", cli.url6);
-        None
-    };
-    config.apply_nft(a.unwrap_or_default(), b.unwrap_or_default())?;
+        Ok(Vec::default())
+    }
+}
+
+fn update(cli: &Cli, config:  &NftConfig) -> Result<(), AppError> {
+    let ipv4 = update_ipv4(cli)?;
+    let ipv6 = update_ipv6(cli)?;
+    config.apply_nft(ipv4, ipv6)?;
     // load_nft(&cli.command)?;
     Ok(())
 }
@@ -127,15 +138,15 @@ fn main() {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
     // test_apply_ruleset();
 
-    let subnets = vec![
-        "192.168.1.0/24",
-        "192.168.0.0/16",
-        "10.1.0.0/16",
-        "10.0.0.0/8",
-        "172.16.5.0/24",
-        "172.16.0.0/16",
-        "8.8.8.0/24",
-    ];
+    // let subnets = vec![
+    //     "192.168.1.0/24",
+    //     "192.168.0.0/16",
+    //     "10.1.0.0/16",
+    //     "10.0.0.0/8",
+    //     "172.16.5.0/24",
+    //     "172.16.0.0/16",
+    //     "8.8.8.0/24",
+    // ];
 
     let config = NftConfig {
         table_name: "blocklist",
@@ -145,11 +156,11 @@ fn main() {
         anti_lockout_set_name: "anti_lockout_set",
     };
     
-    let deduped = crate::trie::deduplicate_subnets(subnets);
-
-    for subnet in deduped {
-        println!("DEDUPED: {}", subnet);
-    }
+    // let deduped = crate::trie::deduplicate_subnets(subnets);
+    // 
+    // for subnet in deduped {
+    //     println!("DEDUPED: {}", subnet);
+    // }
     
     let cli = Cli::parse();
     loop {

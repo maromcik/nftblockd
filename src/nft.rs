@@ -1,4 +1,4 @@
-use crate::blocklist::DeduplicatedBlockList;
+use crate::error::AppError;
 use nftables::expr::Expression;
 use nftables::schema::NfListObject::{Chain, Set, Table};
 use nftables::schema::{NfObject, Nftables, SetType};
@@ -6,7 +6,9 @@ use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{helper, schema, types};
 use std::borrow::Cow;
 use std::collections::HashSet;
-use crate::error::AppError;
+
+
+pub type SetElements<'a> = Vec<Expression<'a>>;
 
 pub struct NftConfig<'a> {
     pub table_name: &'a str,
@@ -41,7 +43,7 @@ impl<'a> NftConfig<'a> {
         }))
     }
 
-    pub fn build_chain(table_name: &'a str, chain_name: &'a str) -> NfObject<'a> {
+    pub fn build_chain(table_name: &'a str, chain_name: &'a str, chain_hook: NfHook, priority: i32) -> NfObject<'a> {
         NfObject::ListObject(Chain(schema::Chain {
             family: NfFamily::INet,
             table: table_name.into(),
@@ -49,8 +51,8 @@ impl<'a> NftConfig<'a> {
             newname: None,
             handle: None,
             _type: Some(types::NfChainType::Filter),
-            hook: Some(NfHook::Prerouting),
-            prio: Some(-300),
+            hook: Some(chain_hook),
+            prio: Some(priority),
             dev: None,
             policy: Some(NfChainPolicy::Accept),
         }))
@@ -79,35 +81,34 @@ impl<'a> NftConfig<'a> {
     }
     pub fn generate_ruleset(
         &self,
-        ipv4_elements: DeduplicatedBlockList<'a>,
-        ipv6_elements: DeduplicatedBlockList<'a>,
+        ipv4_elements: SetElements<'a>,
+        ipv6_elements: SetElements<'a>,
     ) -> Nftables<'a> {
         Nftables {
             objects: Cow::from(vec![
                 NftConfig::build_table(self.table_name),
-                NftConfig::build_chain(self.table_name, self.prerouting_chain),
-                NftConfig::build_chain(self.table_name, self.postrouting_chain),
+                NftConfig::build_chain(self.table_name, self.prerouting_chain, NfHook::Prerouting, -300),
+                NftConfig::build_chain(self.table_name, self.postrouting_chain, NfHook::Postrouting, 300),
                 NftConfig::build_set(
                     self.table_name,
                     format!("{}_ipv4", self.blocklist_set_name),
                     &SetType::Ipv4Addr,
-                    ipv4_elements.get_elements(),
+                    ipv4_elements,
                 ),
                 NftConfig::build_set(
                     self.table_name,
                     format!("{}_ipv6", self.blocklist_set_name),
                     &SetType::Ipv6Addr,
-                    ipv6_elements.get_elements(),
+                    ipv6_elements,
                 ),
             ]),
         }
     }
 
-    pub fn apply_nft(&self, ipv4_elements: DeduplicatedBlockList<'a>, ipv6_elements: DeduplicatedBlockList<'a>) -> Result<(), AppError> {
+    pub fn apply_nft(&self, ipv4_elements: SetElements<'a>, ipv6_elements: SetElements<'a>) -> Result<(), AppError> {
         let ruleset = self.generate_ruleset(ipv4_elements, ipv6_elements);
-        println!("{:?}", serde_json::to_string(&ruleset).unwrap());
+        println!("{}", serde_json::to_string_pretty(&ruleset).unwrap());
         helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
 }
-
