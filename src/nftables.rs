@@ -1,18 +1,67 @@
 use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
 use crate::network::BlocklistNetwork;
+use clap::builder::Str;
 use log::{debug, info};
-use nftables::expr::{Expression, NamedExpression, Prefix};
+use nftables::expr::{
+    Expression, Fib, FibFlag, FibResult, Meta, MetaKey, NamedExpression, Payload, PayloadField,
+    Prefix,
+};
 use nftables::schema::NfCmd::Delete;
-use nftables::schema::NfListObject::{Chain, Element, Set, Table};
+use nftables::schema::NfListObject::{Chain, Element, Rule, Set, Table};
 use nftables::schema::{NfObject, Nftables, SetType};
+use nftables::stmt::Drop;
+use nftables::stmt::{AnonymousCounter, Counter, Log, Match, Operator, Statement};
 use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{helper, schema, types};
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
+use std::fmt::Display;
 
 pub type SetElements<'a> = Vec<Expression<'a>>;
+
+pub enum SetPurpose {
+    Blocklist,
+    AntiLockout,
+}
+
+pub enum RuleDirection {
+    Saddr,
+    Daddr,
+}
+
+pub enum RuleProto {
+    Ip,
+    Ip6,
+}
+
+impl Display for SetPurpose {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SetPurpose::Blocklist => write!(f, "blocklist"),
+            SetPurpose::AntiLockout => write!(f, "anti-lockout"),
+        }
+    }
+}
+
+impl Display for RuleDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuleDirection::Saddr => write!(f, "saddr"),
+            RuleDirection::Daddr => write!(f, "daddr"),
+        }
+    }
+}
+
+impl Display for RuleProto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuleProto::Ip => write!(f, "ip"),
+            RuleProto::Ip6 => write!(f, "ip6"),
+        }
+    }
+}
 
 pub struct NftConfig<'a> {
     pub table_name: String,
@@ -117,12 +166,67 @@ impl<'a> NftConfig<'a> {
         }))
     }
 
+    fn build_rule(
+        table_name: &'a str,
+        chain_name: &'a str,
+        set_name: String,
+        rule_proto: RuleProto,
+        rule_direction: RuleDirection,
+        log: bool,
+        verdict: Statement<'a>,
+        comment: &'a str,
+    ) -> NfObject<'a> {
+        let mut expressions = vec![Statement::Match(Match {
+            left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(
+                PayloadField {
+                    protocol: rule_proto.to_string().into(),
+                    field: rule_direction.to_string().into(),
+                },
+            ))),
+            right: Expression::String(Cow::Owned(format!("@{}", set_name))),
+            op: Operator::EQ,
+        })];
+
+        if log {
+            expressions.push(Statement::Log(Some(Log {
+                prefix: log.then(|| Cow::Owned(format!("blocklist;{};dropped: ", chain_name))),
+                group: None,
+                snaplen: None,
+                queue_threshold: None,
+                level: None,
+                flags: None,
+            })))
+        }
+
+        expressions.extend(vec![
+            Statement::Counter(Counter::Anonymous(None)),
+            verdict,
+        ]);
+
+        NfObject::ListObject(Rule(schema::Rule {
+            family: NfFamily::INet,
+            table: table_name.into(),
+            chain: chain_name.into(),
+            expr: Cow::Owned(expressions),
+            handle: None,
+            index: None,
+            comment: Some(Cow::from(comment)),
+        }))
+    }
+
+    // fn build_rules(
+    //
+    // )
+
     pub fn delete_table_and_apply(&self) -> Result<(), AppError> {
         let ruleset = Nftables {
             objects: Cow::from(vec![NftConfig::delete_table(self.table_name.as_str())]),
         };
         helper::apply_ruleset(&ruleset)?;
-        info!("the `{}` table and all its contents have been deleted", self.table_name);
+        info!(
+            "the `{}` table and all its contents have been deleted",
+            self.table_name
+        );
         Ok(())
     }
 
@@ -171,6 +275,86 @@ impl<'a> NftConfig<'a> {
                 ipv6_blocklist_set_name.clone(),
                 &SetType::Ipv6Addr,
             ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.prerouting_chain.as_str(),
+                ipv4_anti_lockout_set_name.clone(),
+                RuleProto::Ip,
+                RuleDirection::Saddr,
+                false,
+                Statement::Accept(None),
+                "prerouting ipv4 anti-lockout rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.prerouting_chain.as_str(),
+                ipv6_anti_lockout_set_name.clone(),
+                RuleProto::Ip6,
+                RuleDirection::Saddr,
+                false,
+                Statement::Accept(None),
+                "prerouting ipv6 anti-lockout rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.postrouting_chain.as_str(),
+                ipv4_anti_lockout_set_name.clone(),
+                RuleProto::Ip,
+                RuleDirection::Daddr,
+                false,
+                Statement::Accept(None),
+                "postrouting ipv4 anti-lockout rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.postrouting_chain.as_str(),
+                ipv6_anti_lockout_set_name.clone(),
+                RuleProto::Ip6,
+                RuleDirection::Daddr,
+                false,
+                Statement::Accept(None),
+                "postrouting ipv6 anti-lockout rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.prerouting_chain.as_str(),
+                ipv4_blocklist_set_name.clone(),
+                RuleProto::Ip,
+                RuleDirection::Saddr,
+                true,
+                Statement::Drop(None),
+                "prerouting ipv4 blocklist rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.prerouting_chain.as_str(),
+                ipv6_blocklist_set_name.clone(),
+                RuleProto::Ip6,
+                RuleDirection::Saddr,
+                true,
+                Statement::Drop(None),
+                "prerouting ipv6 blocklist rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.postrouting_chain.as_str(),
+                ipv4_blocklist_set_name.clone(),
+                RuleProto::Ip,
+                RuleDirection::Daddr,
+                true,
+                Statement::Drop(None),
+                "postrouting ipv4 blocklist rule",
+            ),
+            NftConfig::build_rule(
+                self.table_name.as_str(),
+                self.postrouting_chain.as_str(),
+                ipv6_blocklist_set_name.clone(),
+                RuleProto::Ip6,
+                RuleDirection::Daddr,
+                true,
+                Statement::Drop(None),
+                "postrouting ipv6 blocklist rule",
+            ),
         ];
 
         if let Some(ipv4_elements) = &self.anti_lockout_ipv4 {
@@ -216,11 +400,11 @@ impl<'a> NftConfig<'a> {
         ipv6_elements: Option<SetElements<'a>>,
     ) -> Result<(), AppError> {
         let ruleset = self.generate_ruleset(&ipv4_elements, &ipv6_elements);
-        helper::apply_ruleset(&ruleset)?;
         debug!(
-            "applied ruleset: {}",
+            "ruleset: {}",
             serde_json::to_string_pretty(&ruleset).unwrap()
         );
+        helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
 }
