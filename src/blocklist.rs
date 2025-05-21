@@ -26,7 +26,7 @@ pub fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
         let elems = SubnetList::IPv4(blocklist_ipv4)
             .validate_blocklist()?
             .deduplicate()?
-            .to_nft_expression()
+            .transform_to_nft_expressions()
             .get_elements();
         Ok(Some(elems))
     } else {
@@ -40,7 +40,7 @@ pub fn update_ipv6<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
         let elems = SubnetList::IPv6(blocklist_ipv6)
             .validate_blocklist()?
             .deduplicate()?
-            .to_nft_expression()
+            .transform_to_nft_expressions()
             .get_elements();
         Ok(Some(elems))
     } else {

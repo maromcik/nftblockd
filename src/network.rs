@@ -1,8 +1,5 @@
 use crate::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
-use log::{debug, warn};
-use std::fmt::Display;
-use std::str::FromStr;
 
 pub trait BlocklistNetwork {
     fn network_addr(&self) -> BitIp;

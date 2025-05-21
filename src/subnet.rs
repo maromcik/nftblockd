@@ -55,7 +55,7 @@ pub enum DeduplicatedSubnetList {
 }
 
 impl DeduplicatedSubnetList {
-    pub fn to_nft_expression<'a>(self) -> NftExpressionSubnetList<'a> {
+    pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
         match self {
             DeduplicatedSubnetList::IPv4(ips) => {
                 NftExpressionSubnetList::IPv4(get_nft_expressions(ips))

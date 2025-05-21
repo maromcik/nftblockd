@@ -14,7 +14,7 @@ impl AntiLockoutSet {
                 Ok(SubnetList::IPv4(ips)
                     .validate_blocklist()?
                     .deduplicate()?
-                    .to_nft_expression()
+                    .transform_to_nft_expressions()
                     .get_elements())
             }
             AntiLockoutSet::IPv6(s) => {
@@ -22,7 +22,7 @@ impl AntiLockoutSet {
                 Ok(SubnetList::IPv6(ips)
                     .validate_blocklist()?
                     .deduplicate()?
-                    .to_nft_expression()
+                    .transform_to_nft_expressions()
                     .get_elements())
             }
         }
