@@ -1,17 +1,9 @@
-mod anti_lockout;
-mod blocklist;
-mod error;
-mod iptrie;
-mod network;
-mod nftables;
-mod subnet;
-
-use crate::blocklist::{update_ipv4, update_ipv6};
-use crate::error::AppError;
-use crate::nftables::NftConfig;
 use clap::Parser;
 use env_logger::Env;
 use log::{error, info, warn};
+use nftables_blocklist_updater::blocklist::{update_ipv4, update_ipv6};
+use nftables_blocklist_updater::error::AppError;
+use nftables_blocklist_updater::nftables::NftConfig;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
