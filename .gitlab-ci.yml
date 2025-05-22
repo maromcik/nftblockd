@@ -29,29 +29,29 @@ build:
     - cargo build --release --target=x86_64-unknown-linux-musl
   rules:
     - if: $CI_COMMIT_TAG
-  artifacts:
-    paths:
-      - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
-    expire_in: 1 hour
+#  artifacts:
+#    paths:
+#      - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
+#    expire_in: 1 hour
   tags:
     - alfonz
 
 
-package:
-  stage: package
-  needs: [ "build" ]
-  script:
-    - mkdir dist
-    - cp target/release/${CI_PROJECT_NAME} dist/
-    - tar -czf dist/${CI_PROJECT_NAME}-linux.tar.gz -C dist ${CI_PROJECT_NAME}
-  rules:
-    - if: $CI_COMMIT_TAG
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 hour
-  tags:
-    - alfonz
+#package:
+#  stage: package
+#  needs: [ "build" ]
+#  script:
+#    - mkdir dist
+#    - cp target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME} dist/
+#    - tar -czf dist/${CI_PROJECT_NAME}-linux.tar.gz -C dist ${CI_PROJECT_NAME}
+#  rules:
+#    - if: $CI_COMMIT_TAG
+#  artifacts:
+#    paths:
+#      - dist/
+#    expire_in: 1 hour
+#  tags:
+#    - alfonz
 
 #release_job:
 #  stage: release
