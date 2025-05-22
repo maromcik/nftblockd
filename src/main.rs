@@ -1,9 +1,9 @@
 use clap::Parser;
 use env_logger::Env;
 use log::{error, info, warn};
-use nftables_blocklist_updater::blocklist::{update_ipv4, update_ipv6};
-use nftables_blocklist_updater::error::AppError;
-use nftables_blocklist_updater::nftables::NftConfig;
+use nftblockd::blocklist::{update_ipv4, update_ipv6};
+use nftblockd::error::AppError;
+use nftblockd::nftables::NftConfig;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;

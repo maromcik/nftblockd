@@ -1,5 +1,5 @@
 use ipnetwork::{Ipv4Network, Ipv6Network};
-use nftables_blocklist_updater::iptrie::deduplicate;
+use nftblockd::iptrie::deduplicate;
 use std::str::FromStr;
 
 fn parse_subnets<T>(subnets: Vec<&str>) -> Vec<T>

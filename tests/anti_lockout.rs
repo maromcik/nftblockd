@@ -1,6 +1,6 @@
 use nftables::expr::{Expression, NamedExpression, Prefix};
-use nftables_blocklist_updater::anti_lockout::AntiLockoutSet;
-use nftables_blocklist_updater::error::{AppError, AppErrorKind};
+use nftblockd::anti_lockout::AntiLockoutSet;
+use nftblockd::error::{AppError, AppErrorKind};
 use std::borrow::Cow;
 
 #[test]
