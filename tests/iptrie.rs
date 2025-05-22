@@ -1,5 +1,5 @@
-use nftables_blocklist_updater::iptrie::deduplicate;
 use ipnetwork::{Ipv4Network, Ipv6Network};
+use nftables_blocklist_updater::iptrie::deduplicate;
 use std::str::FromStr;
 
 fn parse_subnets<T>(subnets: Vec<&str>) -> Vec<T>
@@ -66,18 +66,11 @@ fn test_deduplicate_ipv6_subnets() {
 
 #[test]
 fn test_deduplicate_zero_prefix_ipv4() {
-    let subnets = vec![
-        "0.0.0.0/0",
-        "10.0.0.0/8",
-        "192.168.1.1/32",
-        "172.16.0.0/12",
-    ];
+    let subnets = vec!["0.0.0.0/0", "10.0.0.0/8", "192.168.1.1/32", "172.16.0.0/12"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("0.0.0.0/0").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("0.0.0.0/0").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -87,36 +80,22 @@ fn test_deduplicate_zero_prefix_ipv4() {
 
 #[test]
 fn test_deduplicate_broadcast_address() {
-    let subnets = vec![
-        "255.255.255.255/32",
-        "255.255.255.255/32",
-    ];
+    let subnets = vec!["255.255.255.255/32", "255.255.255.255/32"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("255.255.255.255/32").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("255.255.255.255/32").unwrap()];
 
-    assert_eq!(
-        deduped, expected,
-        "Broadcast address deduplication failed."
-    );
+    assert_eq!(deduped, expected, "Broadcast address deduplication failed.");
 }
 
 #[test]
 fn test_deduplicate_single_ip_subnets_ipv4() {
-    let subnets = vec![
-        "10.1.2.3/32",
-        "10.1.2.3/32",
-        "10.1.2.3/32",
-    ];
+    let subnets = vec!["10.1.2.3/32", "10.1.2.3/32", "10.1.2.3/32"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("10.1.2.3/32").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("10.1.2.3/32").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -126,16 +105,11 @@ fn test_deduplicate_single_ip_subnets_ipv4() {
 
 #[test]
 fn test_deduplicate_single_ip_subnets_ipv6() {
-    let subnets = vec![
-        "2001:db8::1/128",
-        "2001:db8::1/128",
-    ];
+    let subnets = vec!["2001:db8::1/128", "2001:db8::1/128"];
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv6Network::from_str("2001:db8::1/128").unwrap(),
-    ];
+    let expected = vec![Ipv6Network::from_str("2001:db8::1/128").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -154,9 +128,7 @@ fn test_deduplicate_ipv6_zero_prefix() {
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv6Network::from_str("::/0").unwrap(),
-    ];
+    let expected = vec![Ipv6Network::from_str("::/0").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -166,19 +138,11 @@ fn test_deduplicate_ipv6_zero_prefix() {
 
 #[test]
 fn test_deduplicate_disjoint_ipv4_subnets() {
-    let subnets = vec![
-        "1.1.1.0/24",
-        "2.2.2.0/24",
-        "3.3.3.0/24",
-    ];
+    let subnets = vec!["1.1.1.0/24", "2.2.2.0/24", "3.3.3.0/24"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = parse_subnets(vec![
-        "1.1.1.0/24",
-        "2.2.2.0/24",
-        "3.3.3.0/24",
-    ]);
+    let expected = parse_subnets(vec!["1.1.1.0/24", "2.2.2.0/24", "3.3.3.0/24"]);
 
     assert_eq!(
         deduped, expected,
@@ -197,9 +161,7 @@ fn test_deduplicate_ipv6_deeply_nested_subnets() {
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv6Network::from_str("2001:db8::/32").unwrap(),
-    ];
+    let expected = vec![Ipv6Network::from_str("2001:db8::/32").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -232,17 +194,11 @@ fn test_deduplicate_ipv6_mixed_overlap_and_disjoint() {
 
 #[test]
 fn test_deduplicate_ipv6_extreme_prefixes() {
-    let subnets = vec![
-        "2001:db8::0/128",
-        "2001:db8::1/128",
-        "2001:db8::/127",
-    ];
+    let subnets = vec!["2001:db8::0/128", "2001:db8::1/128", "2001:db8::/127"];
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv6Network::from_str("2001:db8::/127").unwrap(),
-    ];
+    let expected = vec![Ipv6Network::from_str("2001:db8::/127").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -252,17 +208,11 @@ fn test_deduplicate_ipv6_extreme_prefixes() {
 
 #[test]
 fn test_deduplicate_ipv6_supernet_with_siblings() {
-    let subnets = vec![
-        "2001:db8:1::/48",
-        "2001:db8:2::/48",
-        "2001:db8::/32",
-    ];
+    let subnets = vec!["2001:db8:1::/48", "2001:db8:2::/48", "2001:db8::/32"];
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv6Network::from_str("2001:db8::/32").unwrap(),
-    ];
+    let expected = vec![Ipv6Network::from_str("2001:db8::/32").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -273,8 +223,8 @@ fn test_deduplicate_ipv6_supernet_with_siblings() {
 #[test]
 fn test_deduplicate_ipv6_link_local_and_loopback() {
     let subnets = vec![
-        "::1/128",          // Loopback
-        "fe80::/10",        // Link-local
+        "::1/128",   // Loopback
+        "fe80::/10", // Link-local
         "fe80::1/128",
         "fe80::abcd/64",
     ];
@@ -295,10 +245,10 @@ fn test_deduplicate_ipv6_link_local_and_loopback() {
 #[test]
 fn test_deduplicate_ipv6_multicast_and_global() {
     let subnets = vec![
-        "ff00::/8",             // Multicast
-        "2001:db8::/32",        // Documentation (global unicast)
-        "ff02::1/128",          // All nodes
-        "ff02::2/128",          // All routers
+        "ff00::/8",      // Multicast
+        "2001:db8::/32", // Documentation (global unicast)
+        "ff02::1/128",   // All nodes
+        "ff02::2/128",   // All routers
     ];
 
     let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
@@ -326,9 +276,7 @@ fn test_deduplicate_ipv4_deeply_nested_subnets() {
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("10.0.0.0/8").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("10.0.0.0/8").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -338,17 +286,11 @@ fn test_deduplicate_ipv4_deeply_nested_subnets() {
 
 #[test]
 fn test_deduplicate_ipv4_multiple_siblings_under_supernet() {
-    let subnets = vec![
-        "192.168.1.0/24",
-        "192.168.2.0/24",
-        "192.168.0.0/16",
-    ];
+    let subnets = vec!["192.168.1.0/24", "192.168.2.0/24", "192.168.0.0/16"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("192.168.0.0/16").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("192.168.0.0/16").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -358,17 +300,11 @@ fn test_deduplicate_ipv4_multiple_siblings_under_supernet() {
 
 #[test]
 fn test_deduplicate_ipv4_extreme_prefixes() {
-    let subnets = vec![
-        "192.0.2.0/32",
-        "192.0.2.1/32",
-        "192.0.2.0/31",
-    ];
+    let subnets = vec!["192.0.2.0/32", "192.0.2.1/32", "192.0.2.0/31"];
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("192.0.2.0/31").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("192.0.2.0/31").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -386,9 +322,7 @@ fn test_deduplicate_ipv4_broadcast_and_special_cases() {
 
     let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
 
-    let expected = vec![
-        Ipv4Network::from_str("0.0.0.0/0").unwrap(),
-    ];
+    let expected = vec![Ipv4Network::from_str("0.0.0.0/0").unwrap()];
 
     assert_eq!(
         deduped, expected,
@@ -399,9 +333,9 @@ fn test_deduplicate_ipv4_broadcast_and_special_cases() {
 #[test]
 fn test_deduplicate_ipv4_loopback_and_reserved_blocks() {
     let subnets = vec![
-        "127.0.0.1/32",     // loopback
-        "127.0.0.0/8",      // entire loopback block
-        "169.254.0.0/16",   // link-local
+        "127.0.0.1/32",   // loopback
+        "127.0.0.0/8",    // entire loopback block
+        "169.254.0.0/16", // link-local
         "169.254.1.1/32",
     ];
 
