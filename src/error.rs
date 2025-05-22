@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum AppErrorKind {
     #[error("Request error")]
     RequestError,
@@ -14,7 +14,7 @@ pub enum AppErrorKind {
     NftablesError,
 }
 
-#[derive(Error, Clone)]
+#[derive(Error, PartialEq, Eq, Clone)]
 pub struct AppError {
     pub error_kind: AppErrorKind,
     pub message: String,
