@@ -1,6 +1,6 @@
 use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
-use crate::network::BlocklistNetwork;
+use crate::network::BlockListNetwork;
 use log::{debug, info};
 use nftables::expr::{Expression, NamedExpression, Payload, PayloadField, Prefix};
 use nftables::schema::NfCmd::Delete;
@@ -390,7 +390,7 @@ impl<'a> NftConfig<'a> {
 
 pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> SetElements<'a>
 where
-    T: BlocklistNetwork,
+    T: BlockListNetwork,
 {
     ips.iter()
         .map(|ip| {

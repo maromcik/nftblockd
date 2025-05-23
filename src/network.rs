@@ -1,7 +1,7 @@
 use crate::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 
-pub trait BlocklistNetwork {
+pub trait BlockListNetwork: Clone {
     fn network_addr(&self) -> BitIp;
     fn network_prefix(&self) -> u8;
     fn max_prefix(&self) -> u8;
@@ -9,7 +9,7 @@ pub trait BlocklistNetwork {
     fn is_network(&self) -> bool;
 }
 
-impl BlocklistNetwork for Ipv4Network {
+impl BlockListNetwork for Ipv4Network {
     fn network_addr(&self) -> BitIp {
         BitIp::Ipv4(self.network().to_bits())
     }
@@ -27,7 +27,7 @@ impl BlocklistNetwork for Ipv4Network {
     }
 }
 
-impl BlocklistNetwork for Ipv6Network {
+impl BlockListNetwork for Ipv6Network {
     fn network_addr(&self) -> BitIp {
         BitIp::Ipv6(self.network().to_bits())
     }

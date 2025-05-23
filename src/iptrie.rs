@@ -1,4 +1,5 @@
-use crate::network::BlocklistNetwork;
+use crate::network::BlockListNetwork;
+use itertools::Itertools;
 
 pub enum BitIp {
     Ipv4(u32),
@@ -20,6 +21,7 @@ impl BitIp {
         }
     }
 }
+/// Generic Prefix Trie node
 #[derive(Default)]
 struct TrieNode {
     children: [Option<Box<TrieNode>>; 2],
@@ -34,9 +36,10 @@ impl TrieNode {
         }
     }
 
+    /// Prefix trie insertion method
     fn insert<T>(&mut self, ip: &T) -> bool
     where
-        T: BlocklistNetwork,
+        T: BlockListNetwork,
     {
         let mut node = self;
 
@@ -63,11 +66,16 @@ impl TrieNode {
     }
 }
 
-pub fn deduplicate<T>(mut ips: Vec<T>) -> Vec<T>
+/// Deduplicates a vector of structs that implement the BlockListNetwork trait
+/// by sorting the vector and then inserting elements into a prefix trie.
+/// Time complexity is O(h*n*logn), where h is the height of the trie
+/// and n*logn is there because of the sorting.
+/// The height of the trie in our case is at most 32 for IPv4 and 128 for IPv6
+pub fn deduplicate<T>(ips: impl Iterator<Item = T>) -> Vec<T>
 where
-    T: BlocklistNetwork,
+    T: BlockListNetwork,
 {
-    ips.sort_by_key(|ip| ip.network_prefix());
+    let ips = ips.sorted_by_key(|ip| ip.network_prefix());
     let mut root = TrieNode::new();
     let mut result = Vec::new();
     for ip in ips {

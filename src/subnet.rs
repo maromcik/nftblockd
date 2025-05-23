@@ -1,8 +1,7 @@
 use crate::error::{AppError, AppErrorKind};
 use crate::iptrie::deduplicate;
-use crate::network::BlocklistNetwork;
+use crate::network::BlockListNetwork;
 use crate::nftables::get_nft_expressions;
-use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::{debug, warn};
 use nftables::expr::Expression;
 use std::fmt::Display;
@@ -14,10 +13,16 @@ pub enum SubnetList {
 }
 
 impl SubnetList {
-    pub fn validate_blocklist(self) -> Result<ValidatedSubnetList, AppError> {
+    pub fn validate_blocklist<V>(
+        self,
+    ) -> Result<ValidatedSubnetList<impl Iterator<Item = V> + Clone, V>, AppError>
+    where
+        V: BlockListNetwork + FromStr,
+        <V as FromStr>::Err: Display,
+    {
         let blocklist = match self {
-            Self::IPv4(parsed_ips) => ValidatedSubnetList::IPv4(validate_subnets(parsed_ips)),
-            Self::IPv6(parsed_ips) => ValidatedSubnetList::IPv6(validate_subnets(parsed_ips)),
+            Self::IPv4(parsed_ips) => ValidatedSubnetList::IPv4(validate_subnets::<V>(parsed_ips)),
+            Self::IPv6(parsed_ips) => ValidatedSubnetList::IPv6(validate_subnets::<V>(parsed_ips)),
         };
         if blocklist.is_empty() {
             return Err(AppError::new(
@@ -29,32 +34,50 @@ impl SubnetList {
     }
 }
 
-pub enum ValidatedSubnetList {
-    IPv4(Vec<Ipv4Network>),
-    IPv6(Vec<Ipv6Network>),
+pub enum ValidatedSubnetList<T, V>
+where
+    T: Iterator<Item = V> + Clone,
+    V: BlockListNetwork,
+{
+    IPv4(T),
+    IPv6(T),
 }
 
-impl ValidatedSubnetList {
-    pub fn deduplicate(self) -> Result<DeduplicatedSubnetList, AppError> {
+impl<T, V> ValidatedSubnetList<T, V>
+where
+    T: Iterator<Item = V> + Clone,
+    V: BlockListNetwork,
+{
+    pub fn deduplicate(self) -> Result<DeduplicatedSubnetList<V>, AppError> {
         match self {
-            ValidatedSubnetList::IPv4(ips) => Ok(DeduplicatedSubnetList::IPv4(deduplicate(ips))),
-            ValidatedSubnetList::IPv6(ips) => Ok(DeduplicatedSubnetList::IPv6(deduplicate(ips))),
+            ValidatedSubnetList::IPv4(ips) => {
+                Ok(DeduplicatedSubnetList::IPv4(deduplicate::<V>(ips)))
+            }
+            ValidatedSubnetList::IPv6(ips) => {
+                Ok(DeduplicatedSubnetList::IPv6(deduplicate::<V>(ips)))
+            }
         }
     }
     fn is_empty(&self) -> bool {
         match self {
-            Self::IPv4(ips) => ips.is_empty(),
-            Self::IPv6(ips) => ips.is_empty(),
+            Self::IPv4(ips) => ips.clone().peekable().peek().is_none(),
+            Self::IPv6(ips) => ips.clone().peekable().peek().is_none(),
         }
     }
 }
 
-pub enum DeduplicatedSubnetList {
-    IPv4(Vec<Ipv4Network>),
-    IPv6(Vec<Ipv6Network>),
+pub enum DeduplicatedSubnetList<V>
+where
+    V: BlockListNetwork,
+{
+    IPv4(Vec<V>),
+    IPv6(Vec<V>),
 }
 
-impl DeduplicatedSubnetList {
+impl<V> DeduplicatedSubnetList<V>
+where
+    V: BlockListNetwork,
+{
     pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
         match self {
             DeduplicatedSubnetList::IPv4(ips) => {
@@ -85,26 +108,24 @@ pub fn parse_from_string(s: &str) -> Vec<String> {
     s.split_whitespace().map(|s| s.to_string()).collect()
 }
 
-pub fn validate_subnets<T>(ips: Vec<String>) -> Vec<T>
+pub fn validate_subnets<T>(ips: Vec<String>) -> impl Iterator<Item = T> + Clone
 where
-    T: BlocklistNetwork + FromStr,
+    T: BlockListNetwork + FromStr,
     <T as FromStr>::Err: Display,
 {
-    ips.into_iter()
-        .filter_map(|ip| match ip.parse::<T>() {
-            Ok(parsed) => {
-                if parsed.is_network() {
-                    debug!("valid ip: {}", ip);
-                    Some(parsed)
-                } else {
-                    warn!("invalid ip: {}; not a network", ip);
-                    None
-                }
-            }
-            Err(e) => {
-                warn!("ip could not be parsed: {}; {}", ip, e);
+    ips.into_iter().filter_map(|ip| match ip.parse::<T>() {
+        Ok(parsed) => {
+            if parsed.is_network() {
+                debug!("valid ip: {}", ip);
+                Some(parsed)
+            } else {
+                warn!("invalid ip: {}; not a network", ip);
                 None
             }
-        })
-        .collect()
+        }
+        Err(e) => {
+            warn!("ip could not be parsed: {}; {}", ip, e);
+            None
+        }
+    })
 }
