@@ -16,7 +16,7 @@ pub struct UrlGroup {
         short = '4',
         long,
         value_name = "IPv4_URL",
-        env = "NFTABLES_BLOCKLIST_IPV4_URL"
+        env = "NFTBLOCKD_IPV4_URL"
     )]
     url4: Option<String>,
 
@@ -25,7 +25,7 @@ pub struct UrlGroup {
         short = '6',
         long,
         value_name = "IPv6_URL",
-        env = "NFTABLES_BLOCKLIST_IPV6_URL"
+        env = "NFTBLOCKD_IPV6_URL"
     )]
     url6: Option<String>,
 }
@@ -42,7 +42,7 @@ struct Cli {
         long,
         value_name = "INTERVAL",
         default_value = "30",
-        env = "NFTABLES_BLOCKLIST_INTERVAL"
+        env = "NFTBLOCKD_INTERVAL"
     )]
     interval: u64,
 
@@ -78,7 +78,7 @@ fn main() {
         cli = Cli::parse();
     }
 
-    let env = Env::new().filter_or("NFTABLES_BLOCKLIST_LOG_LEVEL", "info");
+    let env = Env::new().filter_or("NFTBLOCKD_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
     let config = match NftConfig::new() {

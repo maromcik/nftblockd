@@ -56,25 +56,25 @@ pub struct NftConfig<'a> {
 
 impl<'a> NftConfig<'a> {
     pub fn new() -> Result<Self, AppError> {
-        let anti_lockout_ipv4_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV4").ok();
+        let anti_lockout_ipv4_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV4").ok();
         let anti_lockout_ipv4 = anti_lockout_ipv4_string
             .map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout())
             .transpose()?;
 
-        let anti_lockout_ipv6_string = env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_IPV6").ok();
+        let anti_lockout_ipv6_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV6").ok();
         let anti_lockout_ipv6 = anti_lockout_ipv6_string
             .map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout())
             .transpose()?;
 
         Ok(NftConfig {
-            table_name: env::var("NFTABLES_BLOCKLIST_TABLE_NAME").unwrap_or("blocklist".into()),
-            prerouting_chain: env::var("NFTABLES_BLOCKLIST_PREROUTING_CHAIN_NAME")
+            table_name: env::var("NFTBLOCKD_TABLE_NAME").unwrap_or("blocklist".into()),
+            prerouting_chain: env::var("NFTBLOCKD_PREROUTING_CHAIN_NAME")
                 .unwrap_or("prerouting".into()),
-            postrouting_chain: env::var("NFTABLES_BLOCKLIST_POSTROUTING_CHAIN_NAME")
+            postrouting_chain: env::var("NFTBLOCKD_POSTROUTING_CHAIN_NAME")
                 .unwrap_or("postrouting".into()),
-            blocklist_set_name: env::var("NFTABLES_BLOCKLIST_BLOCKLIST_SET_NAME")
+            blocklist_set_name: env::var("NFTBLOCKD_BLOCKLIST_SET_NAME")
                 .unwrap_or("blocklist_set".into()),
-            anti_lockout_set_name: env::var("NFTABLES_BLOCKLIST_ANTI_LOCKOUT_SET_NAME")
+            anti_lockout_set_name: env::var("NFTBLOCKD_ANTI_LOCKOUT_SET_NAME")
                 .unwrap_or("anti_lockout_set".into()),
             anti_lockout_ipv4,
             anti_lockout_ipv6,
