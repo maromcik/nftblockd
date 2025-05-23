@@ -16,17 +16,50 @@ use std::fmt::Display;
 
 pub type SetElements<'a> = Vec<Expression<'a>>;
 
+/// Converts a vector of subnets into `nftables` expressions.
+///
+/// # Type Parameters
+/// - `T`: A type implementing the `BlockListNetwork` trait (e.g., `Ipv4Network`, `Ipv6Network`).
+///
+/// # Parameters
+/// - `ips`: A vector of subnets `T` to be transformed.
+///
+/// # Returns
+/// A `SetElements` vector of `nftables` expressions.
+pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> SetElements<'a>
+where
+    T: BlockListNetwork,
+{
+    ips.iter()
+        .map(|ip| {
+            Expression::Named(NamedExpression::Prefix(Prefix {
+                addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
+                len: ip.network_prefix() as u32,
+            }))
+        })
+        .collect::<Vec<Expression>>()
+}
+
+/// Represents the direction of a rule in the firewall chain (source or destination).
 pub enum RuleDirection {
+    /// Source address (saddr).
     Saddr,
+    /// Destination address (daddr).
     Daddr,
 }
 
+/// Represents the protocol type (IPv4 or IPv6) for a rule.
 pub enum RuleProto {
+    /// IPv4 protocol.
     Ip,
+    /// IPv6 protocol.
     Ip6,
 }
 
 impl Display for RuleDirection {
+    /// Converts `RuleDirection` into its string representation for use in rule expressions:
+    /// - `Saddr` -> "saddr"
+    /// - `Daddr` -> "daddr".
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RuleDirection::Saddr => write!(f, "saddr"),
@@ -36,6 +69,9 @@ impl Display for RuleDirection {
 }
 
 impl Display for RuleProto {
+    /// Converts `RuleProto` into its string representation for use in rule expressions:
+    /// - `Ip` -> "ip"
+    /// - `Ip6` -> "ip6".
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RuleProto::Ip => write!(f, "ip"),
@@ -44,43 +80,69 @@ impl Display for RuleProto {
     }
 }
 
+/// Defines the configuration structure for managing `nftables`.
+/// This includes tables, chains, sets, and rules used for blocking traffic.
 pub struct NftConfig<'a> {
+    /// Name of the table to contain the blocklist.
     pub table_name: String,
+    /// Name of the `prerouting` chain used for ingress traffic.
     pub prerouting_chain: String,
+    /// Name of the `postrouting` chain used for egress traffic.
     pub postrouting_chain: String,
+    /// Name of the blocklist set for IPs.
     pub blocklist_set_name: String,
+    /// Name of the anti-lockout set to prevent self-blocking.
     pub anti_lockout_set_name: String,
+    /// Anti-lockout rules for IPv4 (optional).
     pub anti_lockout_ipv4: Option<SetElements<'a>>,
+    /// Anti-lockout rules for IPv6 (optional).
     pub anti_lockout_ipv6: Option<SetElements<'a>>,
 }
 
 impl<'a> NftConfig<'a> {
+    /// Creates a new `NftConfig` by fetching configuration values from environment variables.
+    ///
+    /// # Returns
+    /// A populated `NftConfig` instance with default values for unspecified environment variables.
+    ///
+    /// # Errors
+    /// Returns an `AppError` if anti-lockout rules fail to load/parse.
     pub fn new() -> Result<Self, AppError> {
+        // Load IPv4 anti-lockout rules from environment variable.
         let anti_lockout_ipv4_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV4").ok();
         let anti_lockout_ipv4 = anti_lockout_ipv4_string
             .map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout())
             .transpose()?;
 
+        // Load IPv6 anti-lockout rules from environment variable.
         let anti_lockout_ipv6_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV6").ok();
         let anti_lockout_ipv6 = anti_lockout_ipv6_string
             .map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout())
             .transpose()?;
 
         Ok(NftConfig {
-            table_name: env::var("NFTBLOCKD_TABLE_NAME").unwrap_or("blocklist".into()),
+            table_name: env::var("NFTBLOCKD_TABLE_NAME").unwrap_or("blocklist".to_string()),
             prerouting_chain: env::var("NFTBLOCKD_PREROUTING_CHAIN_NAME")
-                .unwrap_or("prerouting".into()),
+                .unwrap_or("prerouting".to_string()),
             postrouting_chain: env::var("NFTBLOCKD_POSTROUTING_CHAIN_NAME")
-                .unwrap_or("postrouting".into()),
+                .unwrap_or("postrouting".to_string()),
             blocklist_set_name: env::var("NFTBLOCKD_BLOCKLIST_SET_NAME")
-                .unwrap_or("blocklist_set".into()),
+                .unwrap_or("blocklist_set".to_string()),
             anti_lockout_set_name: env::var("NFTBLOCKD_ANTI_LOCKOUT_SET_NAME")
-                .unwrap_or("anti_lockout_set".into()),
+                .unwrap_or("anti_lockout_set".to_string()),
             anti_lockout_ipv4,
             anti_lockout_ipv6,
         })
     }
 
+    /// Deletes an existing table in `nftables`. This operation removes the table
+    /// and all related chains, sets, and rules.
+    ///
+    /// # Parameters
+    /// - `table_name`: The name of the table to delete.
+    ///
+    /// # Returns
+    /// An `NfObject` encapsulating the delete operation.
     fn delete_table(table_name: &'a str) -> NfObject<'a> {
         NfObject::CmdObject(Delete(Table(schema::Table {
             family: NfFamily::INet,
@@ -89,14 +151,31 @@ impl<'a> NftConfig<'a> {
         })))
     }
 
+    /// Creates (or declares) a new table in `nftables`.
+    ///
+    /// # Parameters
+    /// - `table_name`: The name of the table to create.
+    ///
+    /// # Returns
+    /// An `NfObject` encapsulating the create operation.
     fn build_table(table_name: &'a str) -> NfObject<'a> {
         NfObject::ListObject(Table(schema::Table {
-            family: NfFamily::INet,
+            family: NfFamily::INet, // Use the `inet` family, which supports both IPv4 and IPv6.
             name: table_name.into(),
             ..Default::default()
         }))
     }
 
+    /// Builds a chain within a specific table, associating it with a particular hook (e.g., `prerouting`).
+    ///
+    /// # Parameters
+    /// - `table_name`: The name of the table containing the chain.
+    /// - `chain_name`: The name of the chain to create.
+    /// - `chain_hook`: The hook to associate with (e.g., `prerouting`, `postrouting`).
+    /// - `priority`: The priority for the chain hook (-300 for `prerouting`, +300 for `postrouting`).
+    ///
+    /// # Returns
+    /// An `NfObject` encapsulating the chain creation operation.
     fn build_chain(
         table_name: &'a str,
         chain_name: &'a str,
@@ -110,13 +189,22 @@ impl<'a> NftConfig<'a> {
             newname: None,
             handle: None,
             _type: Some(types::NfChainType::Filter),
-            hook: Some(chain_hook),
-            prio: Some(priority),
+            hook: Some(chain_hook), // Assign to a specific hook (prerouting/postrouting).
+            prio: Some(priority),   // Hook priority determines order.
             dev: None,
-            policy: Some(NfChainPolicy::Accept),
+            policy: Some(NfChainPolicy::Accept), // Default policy is "accept".
         }))
     }
 
+    /// Creates a set structure in the `nftables` ruleset.
+    ///
+    /// # Parameters
+    /// - `table_name`: The name of the table the set belongs to.
+    /// - `set_name`: The name of the set to create.
+    /// - `set_type`: The data type of elements in the set (e.g., `Ipv4Addr`, `Ipv6Addr`).
+    ///
+    /// # Returns
+    /// An `NfObject` representing the creation of the set.
     fn build_set(table_name: &'a str, set_name: String, set_type: &SetType) -> NfObject<'a> {
         NfObject::ListObject(Set(Box::new(schema::Set {
             family: NfFamily::INet,
@@ -134,6 +222,15 @@ impl<'a> NftConfig<'a> {
         })))
     }
 
+    /// Inserts elements into an existing set within `nftables`.
+    ///
+    /// # Parameters
+    /// - `table_name`: The name of the table.
+    /// - `set_name`: The name of the set being updated.
+    /// - `set_elements`: The elements to insert into the set (as expressions).
+    ///
+    /// # Returns
+    /// An `NfObject` containing the set update operation.
     fn build_set_elements(
         table_name: &'a str,
         set_name: String,
@@ -147,6 +244,20 @@ impl<'a> NftConfig<'a> {
         }))
     }
 
+    /// Builds a firewall rule for a `nftables` chain.
+    ///
+    /// # Parameters
+    /// - `table_name`: The table containing the rule.
+    /// - `chain_name`: The chain to which the rule will be added.
+    /// - `set_name`: The name of the `nftables` set referenced in the rule.
+    /// - `rule_proto`: The protocol type (e.g., IPv4 or IPv6).
+    /// - `rule_direction`: The address direction (e.g., source or destination).
+    /// - `log`: Whether the rule should trigger logging.
+    /// - `verdict`: The final action of the rule (e.g., drop, accept).
+    /// - `comment`: A descriptive comment about the purpose of the rule.
+    ///
+    /// # Returns
+    /// An `NfObject` representing the rule.
     #[allow(clippy::too_many_arguments)]
     fn build_rule(
         table_name: &'a str,
@@ -158,6 +269,7 @@ impl<'a> NftConfig<'a> {
         verdict: Statement<'a>,
         comment: &'a str,
     ) -> NfObject<'a> {
+        // Match condition against the specified `set_name`.
         let mut expressions = vec![Statement::Match(Match {
             left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(
                 PayloadField {
@@ -169,6 +281,7 @@ impl<'a> NftConfig<'a> {
             op: Operator::EQ,
         })];
 
+        // Optionally add a log statement to the rule.
         if log {
             expressions.push(Statement::Log(Some(Log {
                 prefix: log.then(|| Cow::Owned(format!("blocklist;{};dropped: ", chain_name))),
@@ -180,8 +293,10 @@ impl<'a> NftConfig<'a> {
             })))
         }
 
+        // Add counter and verdict to the rule.
         expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
 
+        // Return the completed `NfObject` for the rule.
         NfObject::ListObject(Rule(schema::Rule {
             family: NfFamily::INet,
             table: table_name.into(),
@@ -197,6 +312,10 @@ impl<'a> NftConfig<'a> {
     //
     // )
 
+    /// Deletes the specified `nftables` table and its contents by applying the delete operation.
+    ///
+    /// # Errors
+    /// Returns an `AppError` if the table cannot be deleted.
     pub fn delete_table_and_apply(&self) -> Result<(), AppError> {
         let ruleset = Nftables {
             objects: Cow::from(vec![NftConfig::delete_table(self.table_name.as_str())]),
@@ -209,6 +328,15 @@ impl<'a> NftConfig<'a> {
         Ok(())
     }
 
+    /// Generates the complete `nftables` ruleset for the current configuration.
+    /// This includes table, sets, chains, and rules for IPv4 and IPv6 blocklists and anti-lockout rules.
+    ///
+    /// # Parameters
+    /// - `ipv4_elements`: Optional IPv4 blocklist elements to include in the ruleset.
+    /// - `ipv6_elements`: Optional IPv6 blocklist elements to include in the ruleset.
+    ///
+    /// # Returns
+    /// A fully constructed `Nftables` structure containing all objects.
     pub fn generate_ruleset(
         &'a self,
         ipv4_elements: &'a Option<SetElements<'a>>,
@@ -373,6 +501,23 @@ impl<'a> NftConfig<'a> {
         }
     }
 
+    /// Applies the generated `nftables` ruleset to the system.
+    ///
+    /// This function takes optional IPv4 and IPv6 blocklist elements, generates
+    /// a corresponding `nftables` ruleset using the current configuration, and applies it.
+    ///
+    /// # Parameters
+    /// - `ipv4_elements`: Optional set of IPv4 blocklist elements.
+    /// - `ipv6_elements`: Optional set of IPv6 blocklist elements.
+    ///
+    /// # Returns
+    /// - `Ok(())` if the ruleset was successfully applied.
+    /// - `Err(AppError)` if there was an error in generating or applying the ruleset.
+    ///
+    /// # Errors
+    /// - Returns an `AppError` if the process of applying the ruleset fails.
+    /// - An error may occur if the `nftables` configuration is invalid or communication with
+    ///   the `nftables` subsystem fails.
     pub fn apply_nft(
         &self,
         ipv4_elements: Option<SetElements<'a>>,
@@ -386,18 +531,4 @@ impl<'a> NftConfig<'a> {
         helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
-}
-
-pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> SetElements<'a>
-where
-    T: BlockListNetwork,
-{
-    ips.iter()
-        .map(|ip| {
-            Expression::Named(NamedExpression::Prefix(Prefix {
-                addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
-                len: ip.network_prefix() as u32,
-            }))
-        })
-        .collect::<Vec<Expression>>()
 }
