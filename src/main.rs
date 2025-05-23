@@ -12,21 +12,11 @@ use std::time::Duration;
 #[group(multiple = true)]
 pub struct UrlGroup {
     /// Endpoint for getting the ipv4 blocklist
-    #[clap(
-        short = '4',
-        long,
-        value_name = "IPv4_URL",
-        env = "NFTBLOCKD_IPV4_URL"
-    )]
+    #[clap(short = '4', long, value_name = "IPv4_URL", env = "NFTBLOCKD_IPV4_URL")]
     url4: Option<String>,
 
     /// Endpoint for getting the ipv6 blocklist
-    #[clap(
-        short = '6',
-        long,
-        value_name = "IPv6_URL",
-        env = "NFTBLOCKD_IPV6_URL"
-    )]
+    #[clap(short = '6', long, value_name = "IPv6_URL", env = "NFTBLOCKD_IPV6_URL")]
     url6: Option<String>,
 }
 
