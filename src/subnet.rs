@@ -2,7 +2,8 @@ use crate::error::{AppError, AppErrorKind};
 use crate::iptrie::deduplicate;
 use crate::network::BlockListNetwork;
 use crate::nftables::get_nft_expressions;
-use log::{debug, warn};
+use ipnetwork::{Ipv4Network, Ipv6Network};
+use log::{warn};
 use nftables::expr::Expression;
 use std::fmt::Display;
 use std::str::FromStr;
@@ -26,18 +27,14 @@ impl SubnetList {
     ///
     /// # Errors
     /// Returns an `AppError` if no valid addresses are available after validation.
-    pub fn validate_blocklist<V>(
-        self,
-    ) -> Result<ValidatedSubnetList<impl Iterator<Item = V> + Clone, V>, AppError>
-    where
-        V: BlockListNetwork + FromStr,
-        <V as FromStr>::Err: Display,
+    pub fn validate_blocklist(self, strict: bool) -> Result<ValidatedSubnetList, AppError>
+    
     {
         let blocklist = match self {
             // Parse and validate the IPv4 blocklist.
-            Self::IPv4(parsed_ips) => ValidatedSubnetList::IPv4(validate_subnets::<V>(parsed_ips)),
+            Self::IPv4(parsed_ips) => ValidatedSubnetList::IPv4(validate_subnets::<Ipv4Network>(parsed_ips, strict)?),
             // Parse and validate the IPv6 blocklist.
-            Self::IPv6(parsed_ips) => ValidatedSubnetList::IPv6(validate_subnets::<V>(parsed_ips)),
+            Self::IPv6(parsed_ips) => ValidatedSubnetList::IPv6(validate_subnets::<Ipv6Network>(parsed_ips, strict)?),
         };
 
         // If the blocklist is empty after parsing, return an error.
@@ -49,23 +46,22 @@ impl SubnetList {
         };
         Ok(blocklist)
     }
+
+    pub fn get_strings(self) -> Vec<String> {
+        match self {
+            Self::IPv4(ips) => ips,
+            Self::IPv6(ips) => ips,
+        }
+    }
 }
 
 /// Represents a validated list of IPv4 or IPv6 subnets that can be deduplicated.
-pub enum ValidatedSubnetList<T, V>
-where
-    T: Iterator<Item = V> + Clone,
-    V: BlockListNetwork,
-{
-    IPv4(T), // IPv4 list after validation.
-    IPv6(T), // IPv6 list after validation.
+pub enum ValidatedSubnetList {
+    IPv4(Vec<Ipv4Network>), // IPv4 list after validation.
+    IPv6(Vec<Ipv6Network>), // IPv6 list after validation.
 }
 
-impl<T, V> ValidatedSubnetList<T, V>
-where
-    T: Iterator<Item = V> + Clone,
-    V: BlockListNetwork,
-{
+impl ValidatedSubnetList {
     /// Deduplicates the validated subnets using a prefix trie, removing redundant subnets.
     ///
     /// # Returns
@@ -73,16 +69,12 @@ where
     ///
     /// # Errors
     /// Returns an `AppError` if an internal failure occurs during deduplication.
-    pub fn deduplicate(self) -> Result<DeduplicatedSubnetList<V>, AppError> {
+    pub fn deduplicate(self) -> Result<DeduplicatedSubnetList, AppError> {
         match self {
             // Deduplicate IPv4 subnets.
-            ValidatedSubnetList::IPv4(ips) => {
-                Ok(DeduplicatedSubnetList::IPv4(deduplicate::<V>(ips)))
-            }
+            ValidatedSubnetList::IPv4(ips) => Ok(DeduplicatedSubnetList::IPv4(deduplicate(ips))),
             // Deduplicate IPv6 subnets.
-            ValidatedSubnetList::IPv6(ips) => {
-                Ok(DeduplicatedSubnetList::IPv6(deduplicate::<V>(ips)))
-            }
+            ValidatedSubnetList::IPv6(ips) => Ok(DeduplicatedSubnetList::IPv6(deduplicate(ips))),
         }
     }
 
@@ -92,27 +84,21 @@ where
     /// `true` if the list contains no valid subnets; otherwise, `false`.
     fn is_empty(&self) -> bool {
         match self {
-            Self::IPv4(ips) => ips.clone().peekable().peek().is_none(),
-            Self::IPv6(ips) => ips.clone().peekable().peek().is_none(),
+            Self::IPv4(ips) => ips.is_empty(),
+            Self::IPv6(ips) => ips.is_empty(),
         }
     }
 }
 
 /// Represents a deduplicated list of IPv4 or IPv6 subnets.
-pub enum DeduplicatedSubnetList<V>
-where
-    V: BlockListNetwork,
-{
+pub enum DeduplicatedSubnetList {
     /// Deduplicated IPv4 subnets contained in a `Vec`.
-    IPv4(Vec<V>),
+    IPv4(Vec<Ipv4Network>),
     /// Deduplicated IPv6 subnets contained in a `Vec`.
-    IPv6(Vec<V>),
+    IPv6(Vec<Ipv6Network>),
 }
 
-impl<V> DeduplicatedSubnetList<V>
-where
-    V: BlockListNetwork,
-{
+impl DeduplicatedSubnetList {
     /// Transforms the deduplicated subnets into a list of `nftables` expressions.
     /// These expressions can be used directly in the `nftables` ruleset.
     ///
@@ -174,27 +160,67 @@ pub fn parse_from_string(s: &str) -> Vec<String> {
 ///
 /// # Parameters
 /// - `ips`: A `Vec` of raw subnet strings to validate.
+/// - `strict`: Whether to return an error if an invalid subnet is encountered.
 ///
 /// # Returns
-/// An iterator over valid subnets represented as type `T`.
-pub fn validate_subnets<T>(ips: Vec<String>) -> impl Iterator<Item = T> + Clone
+/// Aa vector of valid subnets represented as type `T`.
+pub fn validate_subnets<T>(ips: Vec<String>, strict: bool) -> Result<Vec<T>, AppError>
 where
-    T: BlockListNetwork + FromStr,
+    T: BlockListNetwork + FromStr + Display,
     <T as FromStr>::Err: Display,
+    AppError: From<<T as FromStr>::Err>,
 {
-    ips.into_iter().filter_map(|ip| match ip.parse::<T>() {
-        Ok(parsed) => {
-            if parsed.is_network() {
-                debug!("valid ip: {}", ip);
-                Some(parsed)
-            } else {
-                warn!("invalid ip: {}; not a network", ip);
-                None
+    let mut parsed = Vec::new();
+    for ip in ips.iter() {
+        match ip.parse::<T>() {
+            Ok(parsed_ip) => {
+                if parsed_ip.is_network() {
+                    parsed.push(parsed_ip);
+                } else {
+                    if strict {
+                    return Err(AppError::new(
+                        AppErrorKind::ParseError,
+                        format!("invalid ip: {}; not a network", parsed_ip).as_str(),
+                    )); }
+                    else {
+                        warn!("invalid ip: {}; not a network", ip);
+                    }
+                }
+            }
+            Err(e) => {
+                if strict {
+                    return Err(AppError::from(e));
+                }
+                else {
+                    warn!("ip could not be parsed: {}; {}", ip, e);
+                }
             }
         }
-        Err(e) => {
-            warn!("ip could not be parsed: {}; {}", ip, e);
-            None
-        }
-    })
+        
+    }
+    Ok(parsed)
 }
+
+// pub fn validate_subnets<T>(ips: Vec<String>) -> Vec<T>
+// where
+//     T: BlocklistNetwork + FromStr,
+//     <T as FromStr>::Err: Display,
+// {
+//     ips.into_iter()
+//         .filter_map(|ip| match ip.parse::<T>() {
+//             Ok(parsed) => {
+//                 if parsed.is_network() {
+//                     debug!("valid ip: {}", ip);
+//                     Some(parsed)
+//                 } else {
+//                     warn!("invalid ip: {}; not a network", ip);
+//                     None
+//                 }
+//             }
+//             Err(e) => {
+//                 warn!("ip could not be parsed: {}; {}", ip, e);
+//                 None
+//             }
+//         })
+//         .collect()
+// }

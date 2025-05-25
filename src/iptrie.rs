@@ -1,5 +1,4 @@
 use crate::network::BlockListNetwork;
-use itertools::Itertools;
 
 /// Represents a generic IP address in either IPv4 or IPv6 format using numeric representations.
 pub enum BitIp {
@@ -110,11 +109,11 @@ impl TrieNode {
 /// # Time Complexity
 /// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
 ///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
-pub fn deduplicate<T>(ips: impl Iterator<Item = T>) -> Vec<T>
+pub fn deduplicate<T>(mut ips: Vec<T>) -> Vec<T>
 where
     T: BlockListNetwork,
 {
-    let ips = ips.sorted_by_key(|ip| ip.network_prefix());
+    ips.sort_by_key(|ip| ip.network_prefix());
     let mut root = TrieNode::new();
     let mut result = Vec::new();
     for ip in ips {

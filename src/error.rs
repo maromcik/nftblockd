@@ -16,6 +16,8 @@ pub enum AppErrorKind {
     NoAddressesParsedError,
     #[error("nftables failed")]
     NftablesError,
+    #[error("could not parse IP address")]
+    ParseError,
 }
 
 /// Represents an error that occurred during execution, including an error kind
@@ -82,5 +84,11 @@ impl From<nftables::helper::NftablesError> for AppError {
     /// A new `AppError` with the `NftablesError` kind and the corresponding error message.
     fn from(value: nftables::helper::NftablesError) -> Self {
         Self::new(AppErrorKind::NftablesError, &value.to_string())
+    }
+}
+
+impl From<ipnetwork::IpNetworkError> for AppError {
+    fn from(value: ipnetwork::IpNetworkError) -> Self {
+        Self::new(AppErrorKind::ParseError, &value.to_string())
     }
 }

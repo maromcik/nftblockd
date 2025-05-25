@@ -1,7 +1,6 @@
 use crate::error::AppError;
 use crate::nftables::SetElements;
-use crate::subnet::{SubnetList, parse_from_string};
-use ipnetwork::{Ipv4Network, Ipv6Network};
+use crate::subnet::{parse_from_string, SubnetList};
 
 /// Represents a set of anti-lockout rules.
 /// These rules define IPs or subnets that are protected from being blocked inadvertently.
@@ -44,7 +43,7 @@ impl AntiLockoutSet {
             AntiLockoutSet::IPv4(s) => {
                 let ips = parse_from_string(s.as_str());
                 Ok(SubnetList::IPv4(ips)
-                    .validate_blocklist::<Ipv4Network>()?
+                    .validate_blocklist(true)?
                     .deduplicate()?
                     .transform_to_nft_expressions()
                     .get_elements())
@@ -52,7 +51,7 @@ impl AntiLockoutSet {
             AntiLockoutSet::IPv6(s) => {
                 let ips = parse_from_string(s.as_str());
                 Ok(SubnetList::IPv6(ips)
-                    .validate_blocklist::<Ipv6Network>()?
+                    .validate_blocklist(true)?
                     .deduplicate()?
                     .transform_to_nft_expressions()
                     .get_elements())

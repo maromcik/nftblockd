@@ -1,7 +1,6 @@
 use crate::error::AppError;
 use crate::nftables::SetElements;
 use crate::subnet::SubnetList;
-use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::{info, warn};
 
 /// Fetches a blocklist from the given endpoint.
@@ -51,7 +50,7 @@ pub fn fetch_blocklist(endpoint: &str) -> Result<Option<Vec<String>>, AppError> 
 pub fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
     if let Some(blocklist_ipv4) = fetch_blocklist(url)? {
         let elems = SubnetList::IPv4(blocklist_ipv4)
-            .validate_blocklist::<Ipv4Network>()?
+            .validate_blocklist(false)?
             .deduplicate()?
             .transform_to_nft_expressions()
             .get_elements();
@@ -77,7 +76,7 @@ pub fn update_ipv4<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
 pub fn update_ipv6<'a>(url: &str) -> Result<Option<SetElements<'a>>, AppError> {
     if let Some(blocklist_ipv6) = fetch_blocklist(url)? {
         let elems = SubnetList::IPv6(blocklist_ipv6)
-            .validate_blocklist::<Ipv6Network>()?
+            .validate_blocklist(false)?
             .deduplicate()?
             .transform_to_nft_expressions()
             .get_elements();
