@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::nftables::SetElements;
-use crate::subnet::{parse_from_string, SubnetList};
+use crate::subnet::{SubnetList, parse_from_string};
 
 /// Represents a set of anti-lockout rules.
 /// These rules define IPs or subnets that are protected from being blocked inadvertently.

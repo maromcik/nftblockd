@@ -285,7 +285,9 @@ fn test_ipv6_with_valid_cidr() {
 fn test_ipv6_with_malformed_input() {
     let subnets = "foobar 2001:db8::/32 ::1/129".to_string();
 
-    let actual = AntiLockoutSet::IPv6(subnets).build_anti_lockout().unwrap_err();
+    let actual = AntiLockoutSet::IPv6(subnets)
+        .build_anti_lockout()
+        .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -318,12 +320,11 @@ fn test_ipv6_with_only_invalid_entries() {
 fn test_ipv6_with_partial_invalid_entries() {
     let subnets = "2001:4860:4860::/64 ::1/129".to_string();
 
-    let actual = AntiLockoutSet::IPv6(subnets).build_anti_lockout().unwrap_err();
+    let actual = AntiLockoutSet::IPv6(subnets)
+        .build_anti_lockout()
+        .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid prefix",
-    );
+    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix");
 
     assert_eq!(
         actual, expected,

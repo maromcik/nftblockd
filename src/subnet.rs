@@ -3,7 +3,7 @@ use crate::iptrie::deduplicate;
 use crate::network::BlockListNetwork;
 use crate::nftables::get_nft_expressions;
 use ipnetwork::{Ipv4Network, Ipv6Network};
-use log::{warn};
+use log::warn;
 use nftables::expr::Expression;
 use std::fmt::Display;
 use std::str::FromStr;
@@ -27,14 +27,16 @@ impl SubnetList {
     ///
     /// # Errors
     /// Returns an `AppError` if no valid addresses are available after validation.
-    pub fn validate_blocklist(self, strict: bool) -> Result<ValidatedSubnetList, AppError>
-    
-    {
+    pub fn validate_blocklist(self, strict: bool) -> Result<ValidatedSubnetList, AppError> {
         let blocklist = match self {
             // Parse and validate the IPv4 blocklist.
-            Self::IPv4(parsed_ips) => ValidatedSubnetList::IPv4(validate_subnets::<Ipv4Network>(parsed_ips, strict)?),
+            Self::IPv4(parsed_ips) => {
+                ValidatedSubnetList::IPv4(validate_subnets::<Ipv4Network>(parsed_ips, strict)?)
+            }
             // Parse and validate the IPv6 blocklist.
-            Self::IPv6(parsed_ips) => ValidatedSubnetList::IPv6(validate_subnets::<Ipv6Network>(parsed_ips, strict)?),
+            Self::IPv6(parsed_ips) => {
+                ValidatedSubnetList::IPv6(validate_subnets::<Ipv6Network>(parsed_ips, strict)?)
+            }
         };
 
         // If the blocklist is empty after parsing, return an error.
@@ -176,27 +178,23 @@ where
             Ok(parsed_ip) => {
                 if parsed_ip.is_network() {
                     parsed.push(parsed_ip);
-                } else {
-                    if strict {
+                } else if strict {
                     return Err(AppError::new(
                         AppErrorKind::ParseError,
                         format!("invalid ip: {}; not a network", parsed_ip).as_str(),
-                    )); }
-                    else {
-                        warn!("invalid ip: {}; not a network", ip);
-                    }
+                    ));
+                } else {
+                    warn!("invalid ip: {}; not a network", ip);
                 }
             }
             Err(e) => {
                 if strict {
                     return Err(AppError::from(e));
-                }
-                else {
+                } else {
                     warn!("ip could not be parsed: {}; {}", ip, e);
                 }
             }
         }
-        
     }
     Ok(parsed)
 }
