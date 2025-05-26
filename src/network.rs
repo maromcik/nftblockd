@@ -3,7 +3,7 @@ use ipnetwork::{Ipv4Network, Ipv6Network};
 
 /// Trait that defines a generic abstraction for representing network-related operations on IPv4 and IPv6 subnets.
 /// This trait is implemented for `Ipv4Network` and `Ipv6Network`.
-pub trait BlockListNetwork: Clone {
+pub trait ListNetwork: Clone {
     /// Retrieves the numeric representation (as `BitIp`) of the network address.
     ///
     /// # Returns
@@ -37,7 +37,7 @@ pub trait BlockListNetwork: Clone {
 }
 
 /// Implementation of the `BlockListNetwork` trait for IPv4 networks (`Ipv4Network`).
-impl BlockListNetwork for Ipv4Network {
+impl ListNetwork for Ipv4Network {
     fn network_addr(&self) -> BitIp {
         BitIp::Ipv4(self.network().to_bits())
     }
@@ -60,7 +60,7 @@ impl BlockListNetwork for Ipv4Network {
 }
 
 /// Implementation of the `BlockListNetwork` trait for IPv6 networks (`Ipv6Network`).
-impl BlockListNetwork for Ipv6Network {
+impl ListNetwork for Ipv6Network {
     fn network_addr(&self) -> BitIp {
         BitIp::Ipv6(self.network().to_bits())
     }

@@ -1,4 +1,4 @@
-use crate::network::BlockListNetwork;
+use crate::network::ListNetwork;
 
 /// Represents a generic IP address in either IPv4 or IPv6 format using numeric representations.
 pub enum BitIp {
@@ -69,7 +69,7 @@ impl TrieNode {
     /// an existing broader subnet.
     fn insert<T>(&mut self, ip: &T) -> bool
     where
-        T: BlockListNetwork,
+        T: ListNetwork,
     {
         let mut node = self;
 
@@ -111,7 +111,7 @@ impl TrieNode {
 ///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
 pub fn deduplicate<T>(mut ips: Vec<T>) -> Vec<T>
 where
-    T: BlockListNetwork,
+    T: ListNetwork,
 {
     ips.sort_by_key(|ip| ip.network_prefix());
     let mut root = TrieNode::new();

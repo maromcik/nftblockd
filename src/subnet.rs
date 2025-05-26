@@ -1,6 +1,6 @@
 use crate::error::{AppError, AppErrorKind};
 use crate::iptrie::deduplicate;
-use crate::network::BlockListNetwork;
+use crate::network::ListNetwork;
 use crate::nftables::get_nft_expressions;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::warn;
@@ -168,7 +168,7 @@ pub fn parse_from_string(s: &str) -> Vec<String> {
 /// Aa vector of valid subnets represented as type `T`.
 pub fn validate_subnets<T>(ips: Vec<String>, strict: bool) -> Result<Vec<T>, AppError>
 where
-    T: BlockListNetwork + FromStr + Display,
+    T: ListNetwork + FromStr + Display,
     <T as FromStr>::Err: Display,
     AppError: From<<T as FromStr>::Err>,
 {

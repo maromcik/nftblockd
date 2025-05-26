@@ -1,6 +1,6 @@
 use crate::anti_lockout::AntiLockoutSet;
 use crate::error::AppError;
-use crate::network::BlockListNetwork;
+use crate::network::ListNetwork;
 use log::{debug, info};
 use nftables::expr::{Expression, NamedExpression, Payload, PayloadField, Prefix};
 use nftables::schema::NfCmd::Delete;
@@ -28,7 +28,7 @@ pub type SetElements<'a> = Vec<Expression<'a>>;
 /// A `SetElements` vector of `nftables` expressions.
 pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> SetElements<'a>
 where
-    T: BlockListNetwork,
+    T: ListNetwork,
 {
     ips.iter()
         .map(|ip| {
