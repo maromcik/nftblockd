@@ -98,7 +98,7 @@ fn main() {
         Ok(c) => c,
         Err(e) => {
             error!("{}", e);
-            return;
+            exit(1)
         }
     };
 
@@ -125,7 +125,7 @@ fn main() {
             Ok(_) => info!("finished"),
             Err(e) => {
                 error!("{}", e);
-                exit(1);
+                exit(2);
             }
         }
 
