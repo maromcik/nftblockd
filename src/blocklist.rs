@@ -39,7 +39,7 @@ impl BlockList {
                 request = request.header(header.0, header.1);
             }
         }
-        
+
         let call = request.call();
         let body = call
             .map_err(|e| {
