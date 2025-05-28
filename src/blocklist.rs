@@ -16,8 +16,8 @@ pub struct BlockList {
 impl BlockList {
     /// Creates a new `BlockList` instance.
     ///
-    /// This function initializes a `BlockList` object with the provided parameters. 
-    /// It parses the `headers` string into a `HashMap` of key-value pairs if provided, 
+    /// This function initializes a `BlockList` object with the provided parameters.
+    /// It parses the `headers` string into a `HashMap` of key-value pairs if provided,
     /// and converts other optional parameters into their expected types.
     ///
     /// # Arguments
@@ -49,9 +49,9 @@ impl BlockList {
 
     /// Fetches and parses a blocklist from the specified endpoint.
     ///
-    /// This function sends an HTTP GET request to the given endpoint. If headers 
-    /// are specified in the `BlockList` object, they are applied to the request. 
-    /// The response body is read and processed using the delimiter specified by `split_string` 
+    /// This function sends an HTTP GET request to the given endpoint. If headers
+    /// are specified in the `BlockList` object, they are applied to the request.
+    /// The response body is read and processed using the delimiter specified by `split_string`
     /// before being returned.
     ///
     /// # Arguments
@@ -60,7 +60,7 @@ impl BlockList {
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing an optional `Vec<String>` with blocklist entries, or an `AppError` 
+    /// Returns a `Result` containing an optional `Vec<String>` with blocklist entries, or an `AppError`
     /// if the request or parsing fails.
     fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
         let mut request = ureq::get(endpoint);
@@ -90,13 +90,13 @@ impl BlockList {
 
     /// Updates the IPv4 blocklist and transforms it into nftables expressions.
     ///
-    /// This function fetches the IPv4 blocklist using the `ipv4_endpoint`. If a blocklist is 
-    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible 
+    /// This function fetches the IPv4 blocklist using the `ipv4_endpoint`. If a blocklist is
+    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible
     /// expressions.
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing an optional `SetElements` object with the expressions, 
+    /// Returns a `Result` containing an optional `SetElements` object with the expressions,
     /// or an `AppError` if any step during the process fails.
     fn update_ipv4<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv4_endpoint.as_deref() else {
@@ -117,13 +117,13 @@ impl BlockList {
 
     /// Updates the IPv6 blocklist and transforms it into nftables expressions.
     ///
-    /// This function fetches the IPv6 blocklist using the `ipv6_endpoint`. If a blocklist is 
-    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible 
+    /// This function fetches the IPv6 blocklist using the `ipv6_endpoint`. If a blocklist is
+    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible
     /// expressions.
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing an optional `SetElements` object with the expressions, 
+    /// Returns a `Result` containing an optional `SetElements` object with the expressions,
     /// or an `AppError` if any step during the process fails.
     fn update_ipv6<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv6_endpoint.as_deref() else {
@@ -144,8 +144,8 @@ impl BlockList {
 
     /// Applies the updated blocklists to the nftables configuration.
     ///
-    /// This public function updates both the IPv4 and IPv6 blocklists (if their respective endpoints are provided) 
-    /// and applies the resulting nftables expressions to the given `NftConfig`. Logs relevant information 
+    /// This public function updates both the IPv4 and IPv6 blocklists (if their respective endpoints are provided)
+    /// and applies the resulting nftables expressions to the given `NftConfig`. Logs relevant information
     /// such as the successful application of the blocklist table.
     ///
     /// # Arguments

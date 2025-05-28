@@ -107,7 +107,7 @@ fn main() {
         error!("{}", e);
         exit(1);
     });
-    
+
     // Main update loop: Periodically fetch, validate, and apply blocklists.
     loop {
         match blocklist.update(&config) {
