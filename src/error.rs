@@ -87,12 +87,36 @@ impl From<nftables::helper::NftablesError> for AppError {
     }
 }
 
+/// Converts an `IpNetworkError` into an `AppError`.
+///
+/// This implementation creates a new `AppError` of kind `ParseError`
+/// using the string representation of the `IpNetworkError`.
+///
+/// # Arguments
+///
+/// * `value` - The `IpNetworkError` to be converted.
+///
+/// # Returns
+///
+/// Returns an `AppError` with details about the parsing error.
 impl From<ipnetwork::IpNetworkError> for AppError {
     fn from(value: ipnetwork::IpNetworkError) -> Self {
         Self::new(AppErrorKind::ParseError, &value.to_string())
     }
 }
 
+/// Converts a `serde_json::Error` into an `AppError`.
+///
+/// This implementation creates a new `AppError` of kind `DeserializeError`
+/// using the string representation of the `serde_json::Error`.
+///
+/// # Arguments
+///
+/// * `value` - The `serde_json::Error` to be converted.
+///
+/// # Returns
+///
+/// Returns an `AppError` with details about the deserialization failure.
 impl From<serde_json::Error> for AppError {
     fn from(value: serde_json::Error) -> Self {
         Self::new(AppErrorKind::DeserializeError, &value.to_string())

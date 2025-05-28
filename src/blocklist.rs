@@ -14,6 +14,22 @@ pub struct BlockList {
 // headers with json in env
 
 impl BlockList {
+    /// Creates a new `BlockList` instance.
+    ///
+    /// This function initializes a `BlockList` object with the provided parameters. 
+    /// It parses the `headers` string into a `HashMap` of key-value pairs if provided, 
+    /// and converts other optional parameters into their expected types.
+    ///
+    /// # Arguments
+    ///
+    /// * `headers` - An optional JSON string that contains HTTP headers in key-value format.
+    /// * `ipv4_endpoint` - An optional string representing the IPv4 blocklist URL.
+    /// * `ipv6_endpoint` - An optional string representing the IPv6 blocklist URL.
+    /// * `split_string` - An optional delimiter used to split the blocklist contents.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the newly created `BlockList` object, or an `AppError` if parsing the headers fails.
     pub fn new(
         headers: Option<String>,
         ipv4_endpoint: Option<String>,
@@ -31,6 +47,21 @@ impl BlockList {
         })
     }
 
+    /// Fetches and parses a blocklist from the specified endpoint.
+    ///
+    /// This function sends an HTTP GET request to the given endpoint. If headers 
+    /// are specified in the `BlockList` object, they are applied to the request. 
+    /// The response body is read and processed using the delimiter specified by `split_string` 
+    /// before being returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `endpoint` - A string reference to the endpoint URL from which to fetch the blocklist.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing an optional `Vec<String>` with blocklist entries, or an `AppError` 
+    /// if the request or parsing fails.
     fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
         let mut request = ureq::get(endpoint);
 
@@ -57,6 +88,16 @@ impl BlockList {
         Ok(blocklist)
     }
 
+    /// Updates the IPv4 blocklist and transforms it into nftables expressions.
+    ///
+    /// This function fetches the IPv4 blocklist using the `ipv4_endpoint`. If a blocklist is 
+    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible 
+    /// expressions.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing an optional `SetElements` object with the expressions, 
+    /// or an `AppError` if any step during the process fails.
     fn update_ipv4<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv4_endpoint.as_deref() else {
             return Ok(None);
@@ -74,6 +115,16 @@ impl BlockList {
         }
     }
 
+    /// Updates the IPv6 blocklist and transforms it into nftables expressions.
+    ///
+    /// This function fetches the IPv6 blocklist using the `ipv6_endpoint`. If a blocklist is 
+    /// successfully retrieved, it is validated, deduplicated, and transformed into nftables-compatible 
+    /// expressions.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing an optional `SetElements` object with the expressions, 
+    /// or an `AppError` if any step during the process fails.
     fn update_ipv6<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv6_endpoint.as_deref() else {
             return Ok(None);
@@ -91,6 +142,19 @@ impl BlockList {
         }
     }
 
+    /// Applies the updated blocklists to the nftables configuration.
+    ///
+    /// This public function updates both the IPv4 and IPv6 blocklists (if their respective endpoints are provided) 
+    /// and applies the resulting nftables expressions to the given `NftConfig`. Logs relevant information 
+    /// such as the successful application of the blocklist table.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - A reference to the `NftConfig` object where the blocklist updates will be applied.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` indicating success (`Ok(())`) or an `AppError` if any part of the process fails.
     pub fn update(&self, config: &NftConfig) -> Result<(), AppError> {
         let ipv4 = self.update_ipv4()?;
         let ipv6 = self.update_ipv6()?;
