@@ -1,9 +1,9 @@
 use clap::Parser;
 use env_logger::Env;
 use log::{error, info, warn};
-use nftblockd::blocklist::{update_ipv4, update_ipv6};
-use nftblockd::error::AppError;
+use nftblockd::blocklist::BlockList;
 use nftblockd::nftables::NftConfig;
+use std::env;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
@@ -50,32 +50,6 @@ struct Cli {
     delete: bool,
 }
 
-/// Updates the IPv4 and/or IPv6 blocklists based on CLI configuration.
-/// Validates and applies the fetched blocklists to the `nftables` configuration.
-///
-/// # Parameters
-/// - `cli`: The parsed command-line arguments.
-/// - `config`: The active `NftConfig` instance containing `nftables` table information.
-///
-/// # Errors
-/// Returns an `AppError` if fetching, validating, or applying the blocklists fails.
-fn update(cli: &Cli, config: &NftConfig) -> Result<(), AppError> {
-    let ipv4 = if let Some(url) = cli.url.url4.as_ref() {
-        update_ipv4(url.as_str())?
-    } else {
-        None
-    };
-    let ipv6 = if let Some(url) = cli.url.url6.as_ref() {
-        update_ipv6(url.as_str())?
-    } else {
-        None
-    };
-
-    config.apply_nft(ipv4, ipv6)?;
-    info!("the `{}` table successfully loaded", config.table_name);
-    Ok(())
-}
-
 /// Entry point of the `nftblockd` binary.
 /// Parses CLI arguments, initializes logging, loads the configuration (from `.env` and CLI),
 /// and periodically updates the blocklists based on the configured interval.
@@ -93,14 +67,18 @@ fn main() {
     let env = Env::new().filter_or("NFTBLOCKD_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
+    let blocklist_split_string = env::var("NFTBLOCKD_BLOCKLIST_SPLIT_STRING")
+        .ok()
+        .filter(|s| !s.is_empty());
+
+    let request_headers = env::var("NFTBLOCKD_REQUEST_HEADERS")
+        .ok()
+        .filter(|s| !s.is_empty());
     // Initialize the `nftables` configuration.
-    let config = match NftConfig::new() {
-        Ok(c) => c,
-        Err(e) => {
-            error!("{}", e);
-            exit(1)
-        }
-    };
+    let config = NftConfig::new().unwrap_or_else(|e| {
+        error!("{}", e);
+        exit(1);
+    });
 
     // If the delete flag is set, clean up the blocklist table and exit.
     if cli.delete {
@@ -119,13 +97,23 @@ fn main() {
         return;
     }
 
+    let blocklist = BlockList::new(
+        request_headers,
+        cli.url.url4,
+        cli.url.url6,
+        blocklist_split_string.as_deref(),
+    )
+    .unwrap_or_else(|e| {
+        error!("{}", e);
+        exit(1);
+    });
     // Main update loop: Periodically fetch, validate, and apply blocklists.
     loop {
-        match update(&cli, &config) {
+        match blocklist.update(&config) {
             Ok(_) => info!("finished"),
             Err(e) => {
                 error!("{}", e);
-                exit(2);
+                exit(3);
             }
         }
 

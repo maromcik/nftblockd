@@ -6,9 +6,9 @@ use crate::subnet::{SubnetList, parse_from_string};
 /// These rules define IPs or subnets that are protected from being blocked inadvertently.
 pub enum AntiLockoutSet {
     /// Anti-lockout rules for IPv4 addresses or subnets.
-    IPv4(String),
+    IPv4(Option<String>),
     /// Anti-lockout rules for IPv6 addresses or subnets.
-    IPv6(String),
+    IPv6(Option<String>),
 }
 
 impl AntiLockoutSet {
@@ -38,18 +38,22 @@ impl AntiLockoutSet {
     /// let anti_lockout = AntiLockoutSet::IPv4(subnets).build_anti_lockout();
     /// assert!(anti_lockout.is_ok());
     /// ```
-    pub fn build_anti_lockout<'a>(self) -> Result<SetElements<'a>, AppError> {
+    pub fn build_anti_lockout<'a>(self) -> Result<Option<SetElements<'a>>, AppError> {
         match self {
-            AntiLockoutSet::IPv4(s) => {
-                let ips = parse_from_string(s.as_str());
+            AntiLockoutSet::IPv4(endpoint) => {
+                let Some(ips) = parse_from_string(endpoint.as_deref(), None) else {
+                    return Ok(None);
+                };
                 Ok(SubnetList::IPv4(ips)
                     .validate_blocklist(true)?
                     .deduplicate()?
                     .transform_to_nft_expressions()
                     .get_elements())
             }
-            AntiLockoutSet::IPv6(s) => {
-                let ips = parse_from_string(s.as_str());
+            AntiLockoutSet::IPv6(endpoint) => {
+                let Some(ips) = parse_from_string(endpoint.as_deref(), None) else {
+                    return Ok(None);
+                };
                 Ok(SubnetList::IPv6(ips)
                     .validate_blocklist(true)?
                     .deduplicate()?

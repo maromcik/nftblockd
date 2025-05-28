@@ -12,12 +12,12 @@ pub enum AppErrorKind {
     RequestError,
     #[error("File error")]
     FileError,
-    #[error("No IPs parsed")]
-    NoAddressesParsedError,
     #[error("nftables failed")]
     NftablesError,
     #[error("could not parse IP address")]
     ParseError,
+    #[error("could not parse json")]
+    DeserializeError,
 }
 
 /// Represents an error that occurred during execution, including an error kind
@@ -30,7 +30,7 @@ pub struct AppError {
 
 impl Debug for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "AppError: {}: {}", self.error_kind, self.message)
+        write!(f, "{}: {}", self.error_kind, self.message)
     }
 }
 
@@ -90,5 +90,11 @@ impl From<nftables::helper::NftablesError> for AppError {
 impl From<ipnetwork::IpNetworkError> for AppError {
     fn from(value: ipnetwork::IpNetworkError) -> Self {
         Self::new(AppErrorKind::ParseError, &value.to_string())
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::new(AppErrorKind::DeserializeError, &value.to_string())
     }
 }

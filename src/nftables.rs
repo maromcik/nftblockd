@@ -26,18 +26,20 @@ pub type SetElements<'a> = Vec<Expression<'a>>;
 ///
 /// # Returns
 /// A `SetElements` vector of `nftables` expressions.
-pub fn get_nft_expressions<'a, T>(ips: Vec<T>) -> SetElements<'a>
+pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
 where
     T: ListNetwork,
 {
-    ips.iter()
-        .map(|ip| {
-            Expression::Named(NamedExpression::Prefix(Prefix {
-                addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
-                len: ip.network_prefix() as u32,
-            }))
-        })
-        .collect::<Vec<Expression>>()
+    Some(
+        ips?.iter()
+            .map(|ip| {
+                Expression::Named(NamedExpression::Prefix(Prefix {
+                    addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
+                    len: ip.network_prefix() as u32,
+                }))
+            })
+            .collect::<Vec<Expression>>(),
+    )
 }
 
 /// Represents the direction of a rule in the firewall chain (source or destination).
@@ -109,19 +111,15 @@ impl<'a> NftConfig<'a> {
     /// Returns an `AppError` if anti-lockout rules fail to load/parse.
     pub fn new() -> Result<Self, AppError> {
         // Load IPv4 anti-lockout rules from environment variable.
-        let anti_lockout_ipv4_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV4").ok();
-        let anti_lockout_ipv4 = anti_lockout_ipv4_string
-            .map(|s| AntiLockoutSet::IPv4(s).build_anti_lockout())
-            .transpose()?;
+        let anti_lockout_ipv4 = AntiLockoutSet::IPv4(env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV4").ok())
+            .build_anti_lockout()?;
 
         // Load IPv6 anti-lockout rules from environment variable.
-        let anti_lockout_ipv6_string = env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV6").ok();
-        let anti_lockout_ipv6 = anti_lockout_ipv6_string
-            .map(|s| AntiLockoutSet::IPv6(s).build_anti_lockout())
-            .transpose()?;
+        let anti_lockout_ipv6 = AntiLockoutSet::IPv6(env::var("NFTBLOCKD_ANTI_LOCKOUT_IPV6").ok())
+            .build_anti_lockout()?;
 
         Ok(NftConfig {
-            table_name: env::var("NFTBLOCKD_TABLE_NAME").unwrap_or("blocklist".to_string()),
+            table_name: env::var("NFTBLOCKD_TABLE_NAME").unwrap_or("nftblockd".to_string()),
             prerouting_chain: env::var("NFTBLOCKD_PREROUTING_CHAIN_NAME")
                 .unwrap_or("prerouting".to_string()),
             postrouting_chain: env::var("NFTBLOCKD_POSTROUTING_CHAIN_NAME")

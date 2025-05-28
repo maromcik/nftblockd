@@ -39,13 +39,6 @@ impl SubnetList {
             }
         };
 
-        // If the blocklist is empty after parsing, return an error.
-        if blocklist.is_empty() {
-            return Err(AppError::new(
-                AppErrorKind::NoAddressesParsedError,
-                "the blocklist is empty after parsing",
-            ));
-        };
         Ok(blocklist)
     }
 
@@ -59,8 +52,8 @@ impl SubnetList {
 
 /// Represents a validated list of IPv4 or IPv6 subnets that can be deduplicated.
 pub enum ValidatedSubnetList {
-    IPv4(Vec<Ipv4Network>), // IPv4 list after validation.
-    IPv6(Vec<Ipv6Network>), // IPv6 list after validation.
+    IPv4(Option<Vec<Ipv4Network>>), // IPv4 list after validation.
+    IPv6(Option<Vec<Ipv6Network>>), // IPv6 list after validation.
 }
 
 impl ValidatedSubnetList {
@@ -79,25 +72,14 @@ impl ValidatedSubnetList {
             ValidatedSubnetList::IPv6(ips) => Ok(DeduplicatedSubnetList::IPv6(deduplicate(ips))),
         }
     }
-
-    /// Checks whether the validated subnet list is empty.
-    ///
-    /// # Returns
-    /// `true` if the list contains no valid subnets; otherwise, `false`.
-    fn is_empty(&self) -> bool {
-        match self {
-            Self::IPv4(ips) => ips.is_empty(),
-            Self::IPv6(ips) => ips.is_empty(),
-        }
-    }
 }
 
 /// Represents a deduplicated list of IPv4 or IPv6 subnets.
 pub enum DeduplicatedSubnetList {
     /// Deduplicated IPv4 subnets contained in a `Vec`.
-    IPv4(Vec<Ipv4Network>),
+    IPv4(Option<Vec<Ipv4Network>>),
     /// Deduplicated IPv6 subnets contained in a `Vec`.
-    IPv6(Vec<Ipv6Network>),
+    IPv6(Option<Vec<Ipv6Network>>),
 }
 
 impl DeduplicatedSubnetList {
@@ -124,9 +106,9 @@ impl DeduplicatedSubnetList {
 /// These expressions are used when applying firewall rules to `nftables`.
 pub enum NftExpressionSubnetList<'a> {
     /// IPv4 `nftables` expressions.
-    IPv4(Vec<Expression<'a>>),
+    IPv4(Option<Vec<Expression<'a>>>),
     /// IPv6 `nftables` expressions.
-    IPv6(Vec<Expression<'a>>),
+    IPv6(Option<Vec<Expression<'a>>>),
 }
 
 impl<'a> NftExpressionSubnetList<'a> {
@@ -134,7 +116,7 @@ impl<'a> NftExpressionSubnetList<'a> {
     ///
     /// # Returns
     /// A `Vec` containing `Expression` instances, either for IPv4 or IPv6.
-    pub fn get_elements(self) -> Vec<Expression<'a>> {
+    pub fn get_elements(self) -> Option<Vec<Expression<'a>>> {
         match self {
             // Extract IPv4 expressions.
             Self::IPv4(exp) => exp,
@@ -151,8 +133,14 @@ impl<'a> NftExpressionSubnetList<'a> {
 ///
 /// # Returns
 /// A vector of subnet strings.
-pub fn parse_from_string(s: &str) -> Vec<String> {
-    s.split_whitespace().map(|s| s.to_string()).collect()
+pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
+    match s {
+        Some(s) if !s.is_empty() => match split_string {
+            None => Some(s.split_whitespace().map(|s| s.trim().to_string()).collect()),
+            Some(split_str) => Some(s.split(split_str).map(|s| s.trim().to_string()).collect()),
+        },
+        _ => None,
+    }
 }
 
 /// Validates a list of subnets and filters them into valid structures.
@@ -166,9 +154,9 @@ pub fn parse_from_string(s: &str) -> Vec<String> {
 ///
 /// # Returns
 /// Aa vector of valid subnets represented as type `T`.
-pub fn validate_subnets<T>(ips: Vec<String>, strict: bool) -> Result<Vec<T>, AppError>
+pub fn validate_subnets<T>(ips: Vec<String>, strict: bool) -> Result<Option<Vec<T>>, AppError>
 where
-    T: ListNetwork + FromStr + Display,
+    T: ListNetwork + FromStr + Display + std::fmt::Debug,
     <T as FromStr>::Err: Display,
     AppError: From<<T as FromStr>::Err>,
 {
@@ -196,7 +184,12 @@ where
             }
         }
     }
-    Ok(parsed)
+
+    Ok(if parsed.is_empty() {
+        None
+    } else {
+        Some(parsed)
+    })
 }
 
 // pub fn validate_subnets<T>(ips: Vec<String>) -> Vec<T>

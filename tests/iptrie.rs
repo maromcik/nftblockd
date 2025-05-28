@@ -2,15 +2,17 @@ use ipnetwork::{Ipv4Network, Ipv6Network};
 use nftblockd::iptrie::deduplicate;
 use std::str::FromStr;
 
-fn parse_subnets<T>(subnets: Vec<&str>) -> Vec<T>
+fn parse_subnets<T>(subnets: Vec<&str>) -> Option<Vec<T>>
 where
     T: FromStr,
     <T as FromStr>::Err: std::fmt::Debug,
 {
-    subnets
-        .iter()
-        .map(|s| s.parse::<T>().unwrap())
-        .collect::<Vec<T>>()
+    Some(
+        subnets
+            .iter()
+            .map(|s| s.parse::<T>().unwrap())
+            .collect::<Vec<T>>(),
+    )
 }
 
 #[test]
@@ -25,7 +27,7 @@ fn test_deduplicate_ipv4_subnets() {
         "8.8.8.0/24",
     ];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     // Expected subnets after deduplication:
     let expected = vec![
@@ -50,7 +52,7 @@ fn test_deduplicate_ipv6_subnets() {
         "fe80::1/128",
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     // Expected subnets after deduplication:
     let expected = vec![
@@ -68,7 +70,7 @@ fn test_deduplicate_ipv6_subnets() {
 fn test_deduplicate_zero_prefix_ipv4() {
     let subnets = vec!["0.0.0.0/0", "10.0.0.0/8", "192.168.1.1/32", "172.16.0.0/12"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("0.0.0.0/0").unwrap()];
 
@@ -82,7 +84,7 @@ fn test_deduplicate_zero_prefix_ipv4() {
 fn test_deduplicate_broadcast_address() {
     let subnets = vec!["255.255.255.255/32", "255.255.255.255/32"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("255.255.255.255/32").unwrap()];
 
@@ -93,7 +95,7 @@ fn test_deduplicate_broadcast_address() {
 fn test_deduplicate_single_ip_subnets_ipv4() {
     let subnets = vec!["10.1.2.3/32", "10.1.2.3/32", "10.1.2.3/32"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("10.1.2.3/32").unwrap()];
 
@@ -107,7 +109,7 @@ fn test_deduplicate_single_ip_subnets_ipv4() {
 fn test_deduplicate_single_ip_subnets_ipv6() {
     let subnets = vec!["2001:db8::1/128", "2001:db8::1/128"];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv6Network::from_str("2001:db8::1/128").unwrap()];
 
@@ -126,7 +128,7 @@ fn test_deduplicate_ipv6_zero_prefix() {
         "::/0",
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv6Network::from_str("::/0").unwrap()];
 
@@ -140,7 +142,7 @@ fn test_deduplicate_ipv6_zero_prefix() {
 fn test_deduplicate_disjoint_ipv4_subnets() {
     let subnets = vec!["1.1.1.0/24", "2.2.2.0/24", "3.3.3.0/24"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Option<Vec<Ipv4Network>> = deduplicate(parse_subnets(subnets));
 
     let expected = parse_subnets(vec!["1.1.1.0/24", "2.2.2.0/24", "3.3.3.0/24"]);
 
@@ -159,7 +161,7 @@ fn test_deduplicate_ipv6_deeply_nested_subnets() {
         "2001:db8:0:1:1:1:1::/96",
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv6Network::from_str("2001:db8::/32").unwrap()];
 
@@ -179,7 +181,7 @@ fn test_deduplicate_ipv6_mixed_overlap_and_disjoint() {
         "2001:db8:abcd:1::/64",
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![
         Ipv6Network::from_str("2001:db8::/32").unwrap(),
@@ -196,7 +198,7 @@ fn test_deduplicate_ipv6_mixed_overlap_and_disjoint() {
 fn test_deduplicate_ipv6_extreme_prefixes() {
     let subnets = vec!["2001:db8::0/128", "2001:db8::1/128", "2001:db8::/127"];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv6Network::from_str("2001:db8::/127").unwrap()];
 
@@ -210,7 +212,7 @@ fn test_deduplicate_ipv6_extreme_prefixes() {
 fn test_deduplicate_ipv6_supernet_with_siblings() {
     let subnets = vec!["2001:db8:1::/48", "2001:db8:2::/48", "2001:db8::/32"];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv6Network::from_str("2001:db8::/32").unwrap()];
 
@@ -229,7 +231,7 @@ fn test_deduplicate_ipv6_link_local_and_loopback() {
         "fe80::abcd/64",
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![
         Ipv6Network::from_str("fe80::/10").unwrap(),
@@ -251,7 +253,7 @@ fn test_deduplicate_ipv6_multicast_and_global() {
         "ff02::2/128",   // All routers
     ];
 
-    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv6Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![
         Ipv6Network::from_str("ff00::/8").unwrap(),
@@ -274,7 +276,7 @@ fn test_deduplicate_ipv4_deeply_nested_subnets() {
         "10.0.1.65/32",
     ];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("10.0.0.0/8").unwrap()];
 
@@ -288,7 +290,7 @@ fn test_deduplicate_ipv4_deeply_nested_subnets() {
 fn test_deduplicate_ipv4_multiple_siblings_under_supernet() {
     let subnets = vec!["192.168.1.0/24", "192.168.2.0/24", "192.168.0.0/16"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("192.168.0.0/16").unwrap()];
 
@@ -302,7 +304,7 @@ fn test_deduplicate_ipv4_multiple_siblings_under_supernet() {
 fn test_deduplicate_ipv4_extreme_prefixes() {
     let subnets = vec!["192.0.2.0/32", "192.0.2.1/32", "192.0.2.0/31"];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("192.0.2.0/31").unwrap()];
 
@@ -320,7 +322,7 @@ fn test_deduplicate_ipv4_broadcast_and_special_cases() {
         "192.0.2.0/24",       // test-net-1
     ];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![Ipv4Network::from_str("0.0.0.0/0").unwrap()];
 
@@ -339,7 +341,7 @@ fn test_deduplicate_ipv4_loopback_and_reserved_blocks() {
         "169.254.1.1/32",
     ];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![
         Ipv4Network::from_str("127.0.0.0/8").unwrap(),
@@ -362,7 +364,7 @@ fn test_deduplicate_ipv4_mixed_overlap_and_disjoint() {
         "8.8.8.0/24",
     ];
 
-    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets));
+    let deduped: Vec<Ipv4Network> = deduplicate(parse_subnets(subnets)).unwrap();
 
     let expected = vec![
         Ipv4Network::from_str("10.0.0.0/8").unwrap(),

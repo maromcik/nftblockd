@@ -109,10 +109,11 @@ impl TrieNode {
 /// # Time Complexity
 /// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
 ///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
-pub fn deduplicate<T>(mut ips: Vec<T>) -> Vec<T>
+pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
 where
     T: ListNetwork,
 {
+    let mut ips = ips?;
     ips.sort_by_key(|ip| ip.network_prefix());
     let mut root = TrieNode::new();
     let mut result = Vec::new();
@@ -121,5 +122,5 @@ where
             result.push(ip);
         }
     }
-    result
+    Some(result)
 }
