@@ -11,19 +11,9 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e023907e-79c5-40b0-9169-12893a4ec6e8" name="Changes" comment="feat: modify readme">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    <list default="true" id="e023907e-79c5-40b0-9169-12893a4ec6e8" name="Changes" comment="feat: add headers and refactor">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/anti_lockout.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/anti_lockout.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/blocklist.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/blocklist.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/iptrie.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/iptrie.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/network.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/network.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/nftables.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/nftables.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/subnet.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/subnet.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/anti_lockout.rs" beforeDir="false" afterPath="$PROJECT_DIR$/tests/anti_lockout.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/iptrie.rs" beforeDir="false" afterPath="$PROJECT_DIR$/tests/iptrie.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -133,7 +123,7 @@
       <workItem from="1748437738128" duration="1826000" />
       <workItem from="1748439764405" duration="1284000" />
       <workItem from="1748441989920" duration="1241000" />
-      <workItem from="1748443327653" duration="440000" />
+      <workItem from="1748443327653" duration="771000" />
     </task>
     <task id="LOCAL-00001" summary="feat: iterators instead of vectors">
       <option name="closed" value="true" />
@@ -263,7 +253,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748428233890</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="feat: add headers and refactor">
+      <option name="closed" value="true" />
+      <created>1748443806379</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1748443806379</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -306,6 +304,7 @@
     <MESSAGE value="feat: add exit code when antilockout validation fails" />
     <MESSAGE value="feat: bump version" />
     <MESSAGE value="feat: modify readme" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: modify readme" />
+    <MESSAGE value="feat: add headers and refactor" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: add headers and refactor" />
   </component>
 </project>

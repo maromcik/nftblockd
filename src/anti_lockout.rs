@@ -35,7 +35,7 @@ impl AntiLockoutSet {
     /// ```rust
     /// use nftblockd::anti_lockout::AntiLockoutSet;
     /// let subnets = "192.168.0.1 10.0.0.0/8".to_string();
-    /// let anti_lockout = AntiLockoutSet::IPv4(subnets).build_anti_lockout();
+    /// let anti_lockout = AntiLockoutSet::IPv4(Some(subnets)).build_anti_lockout();
     /// assert!(anti_lockout.is_ok());
     /// ```
     pub fn build_anti_lockout<'a>(self) -> Result<Option<SetElements<'a>>, AppError> {
