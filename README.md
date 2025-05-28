@@ -153,7 +153,7 @@ RestartSec=60
 EnvironmentFile=/opt/nftables/blocklist/nftblockd.env
 ExecStart=/usr/local/sbin/nftblockd
 ExecReload=/usr/local/sbin/nftblockd
-ExecStop=/usr/local/sbin/nftblockd -d
+ExecStopPost=/usr/local/sbin/nftblockd -d
 StandardOutput=journal
 StandardError=journal
 
@@ -161,61 +161,13 @@ StandardError=journal
 WantedBy=sysinit.target
 ```
 
----
-
-### Configuration Explained
-
-#### `[Unit]` Section
-
-1. **`Description`**:
-    - Provides a short summary of what the service does.
-    - In this case, it describes `nftblockd` as an updater for the IP blocklist in `nftables`.
-
-2. **`Wants`** and **`After`** Dependencies:
-    - `Wants=network-online.target nftables.service`: Expresses that this service depends on the network reaching an
-      online state and the `nftables` service.
-    - `After=network-online.target nftables.service`: Delays starting this service until `network-online.target` and
-      `nftables.service` are active.
-
-#### `[Service]` Section
-
-1. **`Type=simple`**:
-    - Specifies the service type. `simple` assumes the process stays active until interrupted.
-
-2. **`Restart=always`**:
-    - Ensures the service restarts automatically if it fails.
-
-3. **`RestartSec=60`**:
-    - Specifies the delay (in seconds) before restarting the service.
-
-4. **`EnvironmentFile`**:
-    - Defines the environment variables for the service. The configured file `/opt/nftables/blocklist/nftblockd.env` can
-      store parameters such as `NFTBLOCKD_IPV4_URL`, `NFTBLOCKD_INTERVAL`, etc.
-    - Example `nftblockd.env`:
-
+And create the **env** file.
 ```
+cat /opt/nftables/blocklist/nftblockd.env
 NFTBLOCKD_IPV4_URL=https://example.com/ipv4-blocklist
 NFTBLOCKD_IPV6_URL=https://example.com/ipv6-blocklist
 NFTBLOCKD_INTERVAL=60
 ```
-
-5. **`ExecStart`**:
-    - The command to start the service. Points to the `nftblockd` binary in `/usr/local/sbin`.
-
-6. **`ExecReload`**:
-    - Command to reload the service. Here it simply restarts the `nftblockd` process for an updated configuration.
-
-7. **`ExecStop`**:
-    - Command to stop the service gracefully. The flag `-d` triggers the blocklist table deletion.
-
-8. **`StandardOutput` and `StandardError`**:
-    - Configures the output and error logs to be sent to the system journal.
-
-#### `[Install]` Section
-
-1. **`WantedBy=sysinit.target`**:
-    - Specifies when this service should start. `sysinit.target` ensures the service runs during the system's
-      initialization phase.
 
 ---
 
