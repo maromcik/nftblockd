@@ -38,15 +38,30 @@ cd nftblockd
 
 3. **Build the Binary**, use Cargo to build the project:
 
+Standard build using `glibc`
+
 ```shell script
 cargo build --release
 ```
 
+More portable build using `musl`
+```shell
+rustup target add x86_64-unknown-linux-musl
+cargo build --release --target=x86_64-unknown-linux-musl
+```
+
 4. **Run the Binary**:
-   Run the compiled binary:
+    
+Run the compiled binary (`glibc`):
 
 ```shell script
 ./target/release/nftblockd
+```
+
+Run the compiled binary (`musl`):
+
+```shell script
+./target/x86_64-unknown-linux-musl/release/nftblockd
 ```
 
 ---
