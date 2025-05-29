@@ -11,25 +11,17 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e023907e-79c5-40b0-9169-12893a4ec6e8" name="Changes" comment="feat: add headers and refactor">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+    <list default="true" id="3952eaca-9b64-446f-b7ca-1d78c9eabada" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/blocklist.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/blocklist.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="RsBuildProfile:dev" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="RsBuildProfile:test" />
   <component name="Git.Settings">
-    <option name="RECENT_BRANCH_BY_REPOSITORY">
-      <map>
-        <entry key="$PROJECT_DIR$" value="no-iters" />
-      </map>
-    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -45,40 +37,43 @@
   }
 }</component>
   <component name="MacroExpansionManager">
-    <option name="directoryName" value="qhi9azAA" />
+    <option name="directoryName" value="sJsBovB2" />
   </component>
   <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 1
+  &quot;associatedIndex&quot;: 2
 }</component>
-  <component name="ProjectId" id="2xUOBHILUI6kjxFegMiQfrZB6qa" />
+  <component name="ProjectId" id="2xk0B0KDg1ePVlK0sAoo2tvRugR" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Cargo.Doctest of anti_lockout::build_anti_lockout (line 35).executor": "Run",
-    "Cargo.Tests in 'tests'.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.rust.reset.selective.auto.import": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/home/roman/Documents/Dev/RustRoverProjects/tools/nftblockd",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Cargo.Tests in 'tests'.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/roman/Documents/Dev/RustRoverProjects/projects/alemavintage&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;language.rust.cargo.check&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
+  <component name="RsExternalLinterProjectSettings">
+    <option name="additionalArguments" value="-- -W clippy::pedantic" />
+    <option name="tool" value="Clippy" />
+  </component>
   <component name="RunManager">
     <configuration name="Tests in 'tests'" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="buildProfileId" value="dev" />
+      <option name="buildProfileId" value="test" />
       <option name="command" value="test --package nftblockd --test anti_lockout --test iptrie" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs />
@@ -98,10 +93,6 @@
     <recent_temporary>
       <list>
         <item itemvalue="Cargo.Tests in 'tests'" />
-        <item itemvalue="Cargo.Tests in 'tests'" />
-        <item itemvalue="Cargo.Tests in 'tests'" />
-        <item itemvalue="Cargo.Tests in 'tests'" />
-        <item itemvalue="Cargo.Tests in 'tests'" />
       </list>
     </recent_temporary>
   </component>
@@ -110,210 +101,20 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="e023907e-79c5-40b0-9169-12893a4ec6e8" name="Changes" comment="" />
-      <created>1747989049878</created>
+      <changelist id="3952eaca-9b64-446f-b7ca-1d78c9eabada" name="Changes" comment="" />
+      <created>1748466625346</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1747989049878</updated>
-      <workItem from="1747989051440" duration="8140000" />
-      <workItem from="1748098949521" duration="1675000" />
-      <workItem from="1748167002465" duration="9853000" />
-      <workItem from="1748238190202" duration="1852000" />
-      <workItem from="1748242086100" duration="431000" />
-      <workItem from="1748326515370" duration="2386000" />
-      <workItem from="1748342479481" duration="570000" />
-      <workItem from="1748344631223" duration="3917000" />
-      <workItem from="1748428076293" duration="328000" />
-      <workItem from="1748429286343" duration="1850000" />
-      <workItem from="1748432401106" duration="5086000" />
-      <workItem from="1748437738128" duration="1826000" />
-      <workItem from="1748439764405" duration="1284000" />
-      <workItem from="1748441989920" duration="1241000" />
-      <workItem from="1748443327653" duration="771000" />
-      <workItem from="1748454218446" duration="1102000" />
-      <workItem from="1748455457203" duration="35000" />
-      <workItem from="1748455507397" duration="849000" />
+      <updated>1748466625346</updated>
+      <workItem from="1748466626803" duration="88000" />
+      <workItem from="1748469974400" duration="135000" />
+      <workItem from="1748470120112" duration="946000" />
+      <workItem from="1748471438603" duration="82000" />
+      <workItem from="1748542381256" duration="432000" />
     </task>
-    <task id="LOCAL-00001" summary="feat: iterators instead of vectors">
-      <option name="closed" value="true" />
-      <created>1747992510293</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1747992510293</updated>
-    </task>
-    <task id="LOCAL-00002" summary="feat: rename env vars">
-      <option name="closed" value="true" />
-      <created>1747992876622</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1747992876622</updated>
-    </task>
-    <task id="LOCAL-00003" summary="feat: fmt">
-      <option name="closed" value="true" />
-      <created>1747993768810</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1747993768810</updated>
-    </task>
-    <task id="LOCAL-00004" summary="feat: add readme">
-      <option name="closed" value="true" />
-      <created>1747995563387</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1747995563387</updated>
-    </task>
-    <task id="LOCAL-00005" summary="feat: add readme">
-      <option name="closed" value="true" />
-      <created>1747995694901</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1747995694901</updated>
-    </task>
-    <task id="LOCAL-00006" summary="feat: add comments">
-      <option name="closed" value="true" />
-      <created>1747997051393</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1747997051393</updated>
-    </task>
-    <task id="LOCAL-00007" summary="feat: fail on anti lockout parse errors">
-      <option name="closed" value="true" />
-      <created>1748172573185</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1748172573185</updated>
-    </task>
-    <task id="LOCAL-00008" summary="feat: fmt">
-      <option name="closed" value="true" />
-      <created>1748194687496</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1748194687496</updated>
-    </task>
-    <task id="LOCAL-00009" summary="feat: github pipeline">
-      <option name="closed" value="true" />
-      <created>1748194851347</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1748194851347</updated>
-    </task>
-    <task id="LOCAL-00010" summary="feat: rename network trait">
-      <option name="closed" value="true" />
-      <created>1748239987874</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1748239987875</updated>
-    </task>
-    <task id="LOCAL-00011" summary="feat: increment package version">
-      <option name="closed" value="true" />
-      <created>1748240017503</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1748240017504</updated>
-    </task>
-    <task id="LOCAL-00012" summary="feat: increment package version">
-      <option name="closed" value="true" />
-      <created>1748240022741</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1748240022741</updated>
-    </task>
-    <task id="LOCAL-00013" summary="feat: remove itertools from dependencies">
-      <option name="closed" value="true" />
-      <created>1748328451516</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1748328451516</updated>
-    </task>
-    <task id="LOCAL-00014" summary="feat: add exit code when antilockout validation fails">
-      <option name="closed" value="true" />
-      <created>1748346139704</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1748346139704</updated>
-    </task>
-    <task id="LOCAL-00015" summary="feat: bump version">
-      <option name="closed" value="true" />
-      <created>1748346159935</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
-      <option name="project" value="LOCAL" />
-      <updated>1748346159935</updated>
-    </task>
-    <task id="LOCAL-00016" summary="feat: modify readme">
-      <option name="closed" value="true" />
-      <created>1748428233890</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1748428233890</updated>
-    </task>
-    <task id="LOCAL-00017" summary="feat: add headers and refactor">
-      <option name="closed" value="true" />
-      <created>1748443806379</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1748443806379</updated>
-    </task>
-    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State>
-              <option name="FILTERS">
-                <map>
-                  <entry key="branch">
-                    <value>
-                      <list>
-                        <option value="main" />
-                      </list>
-                    </value>
-                  </entry>
-                </map>
-              </option>
-            </State>
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat: iterators instead of vectors" />
-    <MESSAGE value="feat: rename env vars" />
-    <MESSAGE value="feat: add readme" />
-    <MESSAGE value="feat: add comments" />
-    <MESSAGE value="feat: fail on anti lockout parse errors" />
-    <MESSAGE value="feat: fmt" />
-    <MESSAGE value="feat: github pipeline" />
-    <MESSAGE value="feat: rename network trait" />
-    <MESSAGE value="feat: increment package version" />
-    <MESSAGE value="feat: remove itertools from dependencies" />
-    <MESSAGE value="feat: add exit code when antilockout validation fails" />
-    <MESSAGE value="feat: bump version" />
-    <MESSAGE value="feat: modify readme" />
-    <MESSAGE value="feat: add headers and refactor" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: add headers and refactor" />
   </component>
 </project>
