@@ -46,15 +46,7 @@ release:
     - cat release-notes.md
     - glab release create "${CI_COMMIT_TAG}" \
         -F release-notes.md \
-        --assets-links='                                                                                         1 ↵
-            [
-              {
-                "name": "${CI_PROJECT_NAME}",
-                "url": $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}",
-                "link_type": "package",
-                "direct_asset_path": "/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}"
-              }
-            ]'
+        --assets-links='[{"name": "${CI_PROJECT_NAME}", "url": $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}", "link_type": "package", "direct_asset_path": "/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}"}]'
   rules:
     - if: '$CI_COMMIT_TAG'
   tags:
