@@ -26,8 +26,8 @@ build:
   script:
     - rustup target add x86_64-unknown-linux-musl
     - cargo build --release --target=x86_64-unknown-linux-musl
-#  rules:
-#    - if: $CI_COMMIT_TAG
+  rules:
+    - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web"'
   artifacts:
     paths:
       - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
@@ -42,6 +42,8 @@ release:
     name: "Release Hafo"
     tag_name: "Pes"
     description: "Opis psa"
+    rules:
+      - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web"'
     assets:
       links:
         - name: "nftblockd"

@@ -13,7 +13,6 @@
   <component name="ChangeListManager">
     <list default="true" id="3952eaca-9b64-446f-b7ca-1d78c9eabada" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,6 +110,7 @@
       <workItem from="1748470120112" duration="946000" />
       <workItem from="1748471438603" duration="82000" />
       <workItem from="1748542381256" duration="432000" />
+      <workItem from="1748543841439" duration="176000" />
     </task>
     <servers />
   </component>
