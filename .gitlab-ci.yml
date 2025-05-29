@@ -27,7 +27,7 @@ build:
     - rustup target add x86_64-unknown-linux-musl
     - cargo build --release --target=x86_64-unknown-linux-musl
   rules:
-    - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_COMMIT_TAG'
   artifacts:
     paths:
       - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
@@ -45,10 +45,17 @@ release:
     - git log --pretty=format:'- %s (%h)' $(git describe --tags --abbrev=0 HEAD^)..HEAD > release-notes.md
     - cat release-notes.md
     - glab release create "${CI_COMMIT_TAG}" \
-        --title "Release ${CI_COMMIT_TAG}" \
-        --notes-file release-notes.md \
-        --assets-link "name=nftblockd,url=$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}"
+        -F release-notes.md \
+        --assets-links='                                                                                         1 ↵
+            [
+              {
+                "name": "${CI_PROJECT_NAME}",
+                "url": $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}",
+                "link_type": "package",
+                "direct_asset_path": "/artifacts/file/target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}"
+              }
+            ]'
   rules:
-    - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_COMMIT_TAG'
   tags:
     - alfonz
