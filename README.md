@@ -20,7 +20,7 @@ The tool is geared toward optimizing network security with ease and reliability.
 
 ---
 
-## Installation
+## Building
 
 1. **Install Dependencies**  
    Ensure you have Rust installed on your system. If not, you can install it via [rustup](https://rustup.rs/):
@@ -66,6 +66,21 @@ Run the compiled binary (`musl`):
 ```
 
 ---
+
+## Installation
+
+Either use the **nftables** Ansible role from [ansible-collections](https://gitlab.ics.muni.cz/ics/infra/shared/ansible-collections/-/tree/main/ais/linux/roles/nftables?ref_type=heads) or deploy it on your own.
+
+### Deployment
+
+Download the binary and run it:
+
+```shell
+wget https://gitlab.ics.muni.cz/api/v4/projects/7885/packages/generic/nftblockd/latest/nftblockd
+nftblockd -e .env
+```
+
+Instead of the keyword latest, you can specify the desired [tag](https://gitlab.ics.muni.cz/ics/infra/shared/projects/nftblockd/-/tags)
 
 ## Usage
 
