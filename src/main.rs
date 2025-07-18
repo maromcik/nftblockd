@@ -123,7 +123,7 @@ fn main() {
     loop {
         info!("starting updating nftables blocklist");
         match blocklist.update(&config) {
-            Ok(_) => info!("finished updating nftables blocklists"),
+            Ok(_) => info!("finished updating nftables blocklist"),
             Err(e) => {
                 error!("{e}");
                 exit(3);
