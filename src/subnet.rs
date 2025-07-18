@@ -31,21 +31,20 @@ impl SubnetList {
         let blocklist = match self {
             // Parse and validate the IPv4 blocklist.
             Self::IPv4(parsed_ips) => {
-                ValidatedSubnetList::IPv4(validate_subnets::<Ipv4Network>(parsed_ips, strict)?)
+                ValidatedSubnetList::IPv4(validate_subnets::<Ipv4Network>(&parsed_ips, strict)?)
             }
             // Parse and validate the IPv6 blocklist.
             Self::IPv6(parsed_ips) => {
-                ValidatedSubnetList::IPv6(validate_subnets::<Ipv6Network>(parsed_ips, strict)?)
+                ValidatedSubnetList::IPv6(validate_subnets::<Ipv6Network>(&parsed_ips, strict)?)
             }
         };
 
         Ok(blocklist)
     }
 
-    pub fn get_strings(self) -> Vec<String> {
+    #[must_use] pub fn get_strings(self) -> Vec<String> {
         match self {
-            Self::IPv4(ips) => ips,
-            Self::IPv6(ips) => ips,
+            Self::IPv4(ips) | Self::IPv6(ips) => ips,
         }
     }
 }
@@ -88,7 +87,7 @@ impl DeduplicatedSubnetList {
     ///
     /// # Returns
     /// An `NftExpressionSubnetList` containing expressions for IPv4 or IPv6 subnets.
-    pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
+    #[must_use] pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
         match self {
             // Transform IPv4 subnets into `nftables` expressions.
             DeduplicatedSubnetList::IPv4(ips) => {
@@ -116,12 +115,9 @@ impl<'a> NftExpressionSubnetList<'a> {
     ///
     /// # Returns
     /// A `Vec` containing `Expression` instances, either for IPv4 or IPv6.
-    pub fn get_elements(self) -> Option<Vec<Expression<'a>>> {
+    #[must_use] pub fn get_elements(self) -> Option<Vec<Expression<'a>>> {
         match self {
-            // Extract IPv4 expressions.
-            Self::IPv4(exp) => exp,
-            // Extract IPv6 expressions.
-            Self::IPv6(exp) => exp,
+            Self::IPv4(exp) | Self::IPv6(exp) => exp,
         }
     }
 }
@@ -133,7 +129,7 @@ impl<'a> NftExpressionSubnetList<'a> {
 ///
 /// # Returns
 /// A vector of subnet strings.
-pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
+#[must_use] pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
     match s {
         Some(s) if !s.is_empty() => match split_string {
             None => Some(s.split_whitespace().map(|s| s.trim().to_string()).collect()),
@@ -154,7 +150,9 @@ pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<
 ///
 /// # Returns
 /// Aa vector of valid subnets represented as type `T`.
-pub fn validate_subnets<T>(ips: Vec<String>, strict: bool) -> Result<Option<Vec<T>>, AppError>
+/// # Errors
+/// Will return `AppError` when subnets are invalid
+pub fn validate_subnets<T>(ips: &[String], strict: bool) -> Result<Option<Vec<T>>, AppError>
 where
     T: ListNetwork + FromStr + Display + std::fmt::Debug,
     <T as FromStr>::Err: Display,
@@ -169,18 +167,17 @@ where
                 } else if strict {
                     return Err(AppError::new(
                         AppErrorKind::ParseError,
-                        format!("invalid ip: {}; not a network", parsed_ip).as_str(),
+                        format!("invalid ip: {parsed_ip}; not a network").as_str(),
                     ));
                 } else {
-                    warn!("invalid ip: {}; not a network", ip);
+                    warn!("invalid ip: {ip}; not a network");
                 }
             }
             Err(e) => {
                 if strict {
                     return Err(AppError::from(e));
-                } else {
-                    warn!("ip could not be parsed: {}; {}", ip, e);
                 }
+                warn!("ip could not be parsed: {ip}; {e}");
             }
         }
     }

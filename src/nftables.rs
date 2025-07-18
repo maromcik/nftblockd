@@ -26,7 +26,7 @@ pub type SetElements<'a> = Vec<Expression<'a>>;
 ///
 /// # Returns
 /// A `SetElements` vector of `nftables` expressions.
-pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
+#[must_use] pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
 where
     T: ListNetwork,
 {
@@ -35,7 +35,7 @@ where
             .map(|ip| {
                 Expression::Named(NamedExpression::Prefix(Prefix {
                     addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
-                    len: ip.network_prefix() as u32,
+                    len: u32::from(ip.network_prefix()),
                 }))
             })
             .collect::<Vec<Expression>>(),
@@ -275,20 +275,20 @@ impl<'a> NftConfig<'a> {
                     field: rule_direction.to_string().into(),
                 },
             ))),
-            right: Expression::String(Cow::Owned(format!("@{}", set_name))),
+            right: Expression::String(Cow::Owned(format!("@{set_name}"))),
             op: Operator::EQ,
         })];
 
         // Optionally add a log statement to the rule.
         if log {
             expressions.push(Statement::Log(Some(Log {
-                prefix: log.then(|| Cow::Owned(format!("blocklist;{};dropped: ", chain_name))),
+                prefix: log.then(|| Cow::Owned(format!("blocklist;{chain_name};dropped: "))),
                 group: None,
                 snaplen: None,
                 queue_threshold: None,
                 level: None,
                 flags: None,
-            })))
+            })));
         }
 
         // Add counter and verdict to the rule.
@@ -335,7 +335,8 @@ impl<'a> NftConfig<'a> {
     ///
     /// # Returns
     /// A fully constructed `Nftables` structure containing all objects.
-    pub fn generate_ruleset(
+    #[allow(clippy::too_many_lines)]
+    #[must_use] pub fn generate_ruleset(
         &'a self,
         ipv4_elements: &'a Option<SetElements<'a>>,
         ipv6_elements: &'a Option<SetElements<'a>>,
@@ -524,7 +525,7 @@ impl<'a> NftConfig<'a> {
         let ruleset = self.generate_ruleset(&ipv4_elements, &ipv6_elements);
         debug!(
             "ruleset: {}",
-            serde_json::to_string_pretty(&ruleset).unwrap()
+            serde_json::to_string_pretty(&ruleset).unwrap_or("Could not convert ruleset to JSON".to_string())
         );
         helper::apply_ruleset(&ruleset)?;
         Ok(())

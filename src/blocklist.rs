@@ -30,6 +30,9 @@ impl BlockList {
     /// # Returns
     ///
     /// Returns a `Result` containing the newly created `BlockList` object, or an `AppError` if parsing the headers fails.
+    ///
+    /// # Errors
+    /// Will return `AppError` when parsing headers fails
     pub fn new(
         headers: Option<String>,
         ipv4_endpoint: Option<String>,
@@ -43,7 +46,7 @@ impl BlockList {
             headers,
             ipv4_endpoint,
             ipv6_endpoint,
-            split_string: split_string.map(|s| s.to_string()),
+            split_string: split_string.map(std::string::ToString::to_string),
         })
     }
 
@@ -62,6 +65,8 @@ impl BlockList {
     ///
     /// Returns a `Result` containing an optional `Vec<String>` with blocklist entries, or an `AppError`
     /// if the request or parsing fails.
+    /// # Errors
+    /// Will return `AppError` when fetching blocklist fails
     fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
         let mut request = ureq::get(endpoint);
 
@@ -76,7 +81,7 @@ impl BlockList {
             .map_err(|e| {
                 AppError::new(
                     AppErrorKind::RequestError,
-                    format!("failed to fetch from {}: {}", endpoint, e).as_str(),
+                    format!("failed to fetch from {endpoint}: {e}").as_str(),
                 )
             })?
             .body_mut()
@@ -84,7 +89,7 @@ impl BlockList {
 
         let blocklist = parse_from_string(Some(body.trim()), self.split_string.as_deref());
 
-        info!("blocklist fetched from: {}", endpoint);
+        info!("blocklist fetched from: {endpoint}");
         Ok(blocklist)
     }
 
@@ -98,6 +103,8 @@ impl BlockList {
     ///
     /// Returns a `Result` containing an optional `SetElements` object with the expressions,
     /// or an `AppError` if any step during the process fails.
+    /// # Errors
+    /// Will return `AppError` when parsing subnets fails
     fn update_ipv4<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv4_endpoint.as_deref() else {
             return Ok(None);
@@ -110,7 +117,7 @@ impl BlockList {
                 .get_elements();
             Ok(elems)
         } else {
-            warn!("empty IPv4 blocklist fetched from: {}", url);
+            warn!("empty IPv4 blocklist fetched from: {url}");
             Ok(None)
         }
     }
@@ -125,6 +132,8 @@ impl BlockList {
     ///
     /// Returns a `Result` containing an optional `SetElements` object with the expressions,
     /// or an `AppError` if any step during the process fails.
+    /// # Errors
+    /// Will return `AppError` when parsing subnets fails
     fn update_ipv6<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv6_endpoint.as_deref() else {
             return Ok(None);
@@ -137,7 +146,7 @@ impl BlockList {
                 .get_elements();
             Ok(elems)
         } else {
-            warn!("empty IPv6 blocklist fetched from: {}", url);
+            warn!("empty IPv6 blocklist fetched from: {url}");
             Ok(None)
         }
     }
@@ -155,6 +164,8 @@ impl BlockList {
     /// # Returns
     ///
     /// Returns a `Result` indicating success (`Ok(())`) or an `AppError` if any part of the process fails.
+    /// # Errors
+    /// Will return `AppError` when updating nftables fails
     pub fn update(&self, config: &NftConfig) -> Result<(), AppError> {
         let ipv4 = self.update_ipv4()?;
         let ipv6 = self.update_ipv6()?;

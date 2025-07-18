@@ -76,7 +76,7 @@ fn main() {
         .filter(|s| !s.is_empty());
     // Initialize the `nftables` configuration.
     let config = NftConfig::new().unwrap_or_else(|e| {
-        error!("{}", e);
+        error!("{e}");
         exit(1);
     });
 
@@ -86,7 +86,7 @@ fn main() {
             warn!(
                 "the `{}` table (probably) already deleted: {}",
                 config.table_name, e
-            )
+            );
         });
         return;
     }
@@ -104,7 +104,7 @@ fn main() {
         blocklist_split_string.as_deref(),
     )
     .unwrap_or_else(|e| {
-        error!("{}", e);
+        error!("{e}");
         exit(1);
     });
 
@@ -113,7 +113,7 @@ fn main() {
         match blocklist.update(&config) {
             Ok(_) => info!("finished"),
             Err(e) => {
-                error!("{}", e);
+                error!("{e}");
                 exit(3);
             }
         }
