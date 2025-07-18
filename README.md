@@ -69,7 +69,9 @@ Run the compiled binary (`musl`):
 
 ## Installation
 
-Either use the **nftables** Ansible role from [ansible-collections](https://gitlab.ics.muni.cz/ics/infra/shared/ansible-collections/-/tree/main/ais/linux/roles/nftables?ref_type=heads) or deploy it on your own.
+Either use the **nftables** Ansible role
+from [ansible-collections](https://gitlab.ics.muni.cz/ics/infra/shared/ansible-collections/-/tree/main/ais/linux/roles/nftables?ref_type=heads)
+or deploy it on your own.
 
 ### Deployment
 
@@ -80,7 +82,8 @@ wget https://gitlab.ics.muni.cz/api/v4/projects/7885/packages/generic/nftblockd/
 nftblockd -e .env
 ```
 
-Instead of the keyword latest, you can specify the desired [tag](https://gitlab.ics.muni.cz/ics/infra/shared/projects/nftblockd/-/tags)
+Instead of the keyword latest, you can specify the
+desired [tag](https://gitlab.ics.muni.cz/ics/infra/shared/projects/nftblockd/-/tags)
 
 ## Usage
 
@@ -139,6 +142,7 @@ variables:
 | `NFTBLOCKD_IPV6_URL`               | The IPv6 blocklist fetching URL.                                                            | None               |
 | `NFTBLOCKD_BLOCKLIST_SPLIT_STRING` | The string that is used to split the fetched blocklist                                      | Any whitespaces    |
 | `NFTBLOCKD_REQUEST_HEADERS`        | A json in the format `{ "header_key1" : "header_value1", "header_key2" : "header_value2" }` | None               |
+| `NFTBLOCKD_REQUEST_TIMEOUT`        | A global timeout for requests                                                               |
 | `NFTBLOCKD_INTERVAL`               | Interval (in seconds) for updating blocklists.                                              | `30`               |
 | `NFTBLOCKD_LOG_LEVEL`              | Logging level. Options: `debug`, `info`, `warn`, `error`.                                   | `info`             |
 | `NFTBLOCKD_ANTI_LOCKOUT_IPV4`      | A whitespace separated list of IPv4 anti-lockout IPs (e.g., admin IP).                      | None               |
@@ -148,7 +152,6 @@ variables:
 | `NFTBLOCKD_POSTROUTING_CHAIN_NAME` | The name of the `nftables` postrouting chain in the blocklist table.                        | `postrouting`      |
 | `NFTBLOCKD_BLOCKLIST_SET_NAME`     | The name of the blocklist set within the table.                                             | `blocklist_set`    |
 | `NFTBLOCKD_ANTI_LOCKOUT_SET_NAME`  | The name of the blocklist set within the table.                                             | `anti_lockout_set` |
-
 
 You can use these variables via an `.env` file for easy configuration:
 

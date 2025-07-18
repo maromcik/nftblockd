@@ -74,6 +74,15 @@ fn main() {
     let request_headers = env::var("NFTBLOCKD_REQUEST_HEADERS")
         .ok()
         .filter(|s| !s.is_empty());
+
+    let request_timeout = env::var("NFTBLOCKD_REQUEST_TIMEOUT")
+        .unwrap_or("10".to_string())
+        .parse::<u64>()
+        .unwrap_or_else(|e| {
+            error!("{e}");
+            exit(1);
+        });
+
     // Initialize the `nftables` configuration.
     let config = NftConfig::new().unwrap_or_else(|e| {
         error!("{e}");
@@ -99,6 +108,7 @@ fn main() {
 
     let blocklist = BlockList::new(
         request_headers,
+        request_timeout,
         cli.url.url4,
         cli.url.url6,
         blocklist_split_string.as_deref(),

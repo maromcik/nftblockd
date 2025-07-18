@@ -3,9 +3,11 @@ use crate::nftables::{NftConfig, SetElements};
 use crate::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
+use std::time::Duration;
 
 pub struct BlockList {
     pub headers: Option<HashMap<String, String>>,
+    pub timeout: Duration,
     pub ipv4_endpoint: Option<String>,
     pub ipv6_endpoint: Option<String>,
     pub split_string: Option<String>,
@@ -35,6 +37,7 @@ impl BlockList {
     /// Will return `AppError` when parsing headers fails
     pub fn new(
         headers: Option<String>,
+        timeout: u64,
         ipv4_endpoint: Option<String>,
         ipv6_endpoint: Option<String>,
         split_string: Option<&str>,
@@ -44,6 +47,7 @@ impl BlockList {
             .transpose()?;
         Ok(Self {
             headers,
+            timeout: Duration::from_secs(timeout),
             ipv4_endpoint,
             ipv6_endpoint,
             split_string: split_string.map(std::string::ToString::to_string),
@@ -68,7 +72,13 @@ impl BlockList {
     /// # Errors
     /// Will return `AppError` when fetching blocklist fails
     fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
-        let mut request = ureq::get(endpoint);
+        let config = ureq::Agent::config_builder()
+            .timeout_global(Some(self.timeout))
+            .build();
+
+        let agent = ureq::Agent::new_with_config(config);
+
+        let mut request = agent.get(endpoint);
 
         if let Some(headers) = &self.headers {
             for header in headers {
