@@ -26,7 +26,8 @@ pub type SetElements<'a> = Vec<Expression<'a>>;
 ///
 /// # Returns
 /// A `SetElements` vector of `nftables` expressions.
-#[must_use] pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
+#[must_use]
+pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
 where
     T: ListNetwork,
 {
@@ -336,7 +337,8 @@ impl<'a> NftConfig<'a> {
     /// # Returns
     /// A fully constructed `Nftables` structure containing all objects.
     #[allow(clippy::too_many_lines)]
-    #[must_use] pub fn generate_ruleset(
+    #[must_use]
+    pub fn generate_ruleset(
         &'a self,
         ipv4_elements: &'a Option<SetElements<'a>>,
         ipv6_elements: &'a Option<SetElements<'a>>,
@@ -525,7 +527,8 @@ impl<'a> NftConfig<'a> {
         let ruleset = self.generate_ruleset(&ipv4_elements, &ipv6_elements);
         debug!(
             "ruleset: {}",
-            serde_json::to_string_pretty(&ruleset).unwrap_or("Could not convert ruleset to JSON".to_string())
+            serde_json::to_string_pretty(&ruleset)
+                .unwrap_or("Could not convert ruleset to JSON".to_string())
         );
         helper::apply_ruleset(&ruleset)?;
         Ok(())

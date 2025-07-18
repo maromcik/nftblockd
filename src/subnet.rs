@@ -42,7 +42,8 @@ impl SubnetList {
         Ok(blocklist)
     }
 
-    #[must_use] pub fn get_strings(self) -> Vec<String> {
+    #[must_use]
+    pub fn get_strings(self) -> Vec<String> {
         match self {
             Self::IPv4(ips) | Self::IPv6(ips) => ips,
         }
@@ -87,7 +88,8 @@ impl DeduplicatedSubnetList {
     ///
     /// # Returns
     /// An `NftExpressionSubnetList` containing expressions for IPv4 or IPv6 subnets.
-    #[must_use] pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
+    #[must_use]
+    pub fn transform_to_nft_expressions<'a>(self) -> NftExpressionSubnetList<'a> {
         match self {
             // Transform IPv4 subnets into `nftables` expressions.
             DeduplicatedSubnetList::IPv4(ips) => {
@@ -115,7 +117,8 @@ impl<'a> NftExpressionSubnetList<'a> {
     ///
     /// # Returns
     /// A `Vec` containing `Expression` instances, either for IPv4 or IPv6.
-    #[must_use] pub fn get_elements(self) -> Option<Vec<Expression<'a>>> {
+    #[must_use]
+    pub fn get_elements(self) -> Option<Vec<Expression<'a>>> {
         match self {
             Self::IPv4(exp) | Self::IPv6(exp) => exp,
         }
@@ -129,7 +132,8 @@ impl<'a> NftExpressionSubnetList<'a> {
 ///
 /// # Returns
 /// A vector of subnet strings.
-#[must_use] pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
+#[must_use]
+pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
     match s {
         Some(s) if !s.is_empty() => match split_string {
             None => Some(s.split_whitespace().map(|s| s.trim().to_string()).collect()),

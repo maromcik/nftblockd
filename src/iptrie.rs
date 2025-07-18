@@ -109,7 +109,8 @@ impl TrieNode {
 /// # Time Complexity
 /// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
 ///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
-#[must_use] pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
+#[must_use]
+pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
 where
     T: ListNetwork,
 {
