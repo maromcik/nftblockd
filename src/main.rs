@@ -118,10 +118,12 @@ fn main() {
         exit(1);
     });
 
+    info!("initialized");
     // Main update loop: Periodically fetch, validate, and apply blocklists.
     loop {
+        info!("starting updating nftables blocklist");
         match blocklist.update(&config) {
-            Ok(_) => info!("finished"),
+            Ok(_) => info!("finished updating nftables blocklists"),
             Err(e) => {
                 error!("{e}");
                 exit(3);
