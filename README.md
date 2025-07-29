@@ -129,6 +129,22 @@ nftblockd --env-file path/to/env/file
 nftblockd --delete
 ```
 
+### Logging
+You can view logs using the `journalctl -ekf | grep nftblockd` command.
+```shell
+journalctl -ekf | grep nftblockd
+Jul 23 18:03:21 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=91.191.209.13 DST=147.251.6.171 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=38244 PROTO=TCP SPT=52783 DPT=3397 WINDOW=1024 RES=0x00 SYN URGP=0 
+Jul 23 19:12:42 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=188.166.78.140 DST=147.251.6.171 LEN=44 TOS=0x00 PREC=0x00 TTL=247 ID=54321 PROTO=TCP SPT=34686 DPT=22533 WINDOW=65535 RES=0x00 SYN URGP=0 
+Jul 23 21:45:02 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=83.222.190.242 DST=147.251.6.171 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=34085 PROTO=TCP SPT=57526 DPT=8137 WINDOW=1025 RES=0x00 SYN URGP=0 
+Jul 23 21:54:17 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=83.222.190.242 DST=147.251.6.171 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=33107 PROTO=TCP SPT=57526 DPT=8103 WINDOW=1025 RES=0x00 SYN URGP=0 
+Jul 24 04:03:47 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=79.124.62.122 DST=147.251.6.171 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=33224 PROTO=TCP SPT=0 DPT=5060 WINDOW=1024 RES=0x00 SYN URGP=0 
+Jul 24 06:04:13 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=152.32.150.29 DST=147.251.6.171 LEN=44 TOS=0x08 PREC=0x20 TTL=44 ID=0 DF PROTO=TCP SPT=38265 DPT=25105 WINDOW=1024 RES=0x00 SYN URGP=0 
+Jul 24 09:59:09 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=83.222.191.42 DST=147.251.6.171 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=12192 PROTO=TCP SPT=61000 DPT=25708 WINDOW=1024 RES=0x00 SYN URGP=0 
+Jul 24 10:01:26 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=83.222.191.42 DST=147.251.6.171 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=48645 PROTO=TCP SPT=61000 DPT=25741 WINDOW=1024 RES=0x00 SYN URGP=0 
+Jul 24 11:55:34 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=167.99.117.14 DST=147.251.6.171 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=54321 PROTO=TCP SPT=54545 DPT=8000 WINDOW=65535 RES=0x00 SYN URGP=0 
+Jul 24 11:55:34 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=167.99.117.14 DST=147.251.6.171 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=54321 PROTO=TCP SPT=54546 DPT=8000 WINDOW=65535 RES=0x00 SYN URGP=0
+```
+
 ---
 
 ## Configuration
