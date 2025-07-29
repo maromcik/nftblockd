@@ -280,10 +280,10 @@ impl<'a> NftConfig<'a> {
             op: Operator::EQ,
         })];
 
-        // Optionally add a log statement to the rule.
+        // Optionally, add a log statement to the rule.
         if log {
             expressions.push(Statement::Log(Some(Log {
-                prefix: log.then(|| Cow::Owned(format!("blocklist;{chain_name};dropped: "))),
+                prefix: log.then(|| Cow::Owned(format!("nftblockd;{chain_name};dropped: "))),
                 group: None,
                 snaplen: None,
                 queue_threshold: None,
@@ -293,8 +293,8 @@ impl<'a> NftConfig<'a> {
         }
 
         // Add counter and verdict to the rule.
-        expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
-
+        // expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
+        expressions.extend(vec![verdict]);
         // Return the completed `NfObject` for the rule.
         NfObject::ListObject(Rule(schema::Rule {
             family: NfFamily::INet,
