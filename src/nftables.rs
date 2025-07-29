@@ -6,7 +6,7 @@ use nftables::expr::{Expression, NamedExpression, Payload, PayloadField, Prefix}
 use nftables::schema::NfCmd::Delete;
 use nftables::schema::NfListObject::{Chain, Element, Rule, Set, Table};
 use nftables::schema::{NfObject, Nftables, SetType};
-use nftables::stmt::{Counter, Log, Match, Operator, Statement};
+use nftables::stmt::{Log, Match, Operator, Statement};
 use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{helper, schema, types};
 use std::borrow::Cow;
