@@ -1,5 +1,4 @@
 use clap::Parser;
-use env_logger::Env;
 use log::{error, info, warn};
 use nftblockd::blocklist::BlockList;
 use nftblockd::nftables::NftConfig;
@@ -7,6 +6,7 @@ use std::env;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
+use tracing_subscriber::EnvFilter;
 
 /// Group of URLs provided for IPv4 and IPv6 blocklist fetching.
 /// These URLs can be passed via CLI arguments or environment variables.
@@ -63,9 +63,13 @@ fn main() {
         cli = Cli::parse();
     }
 
-    // Initialize the logger with a default log level of "info" (can be overridden via `NFTBLOCKD_LOG_LEVEL`).
-    let env = Env::new().filter_or("NFTBLOCKD_LOG_LEVEL", "info");
-    env_logger::init_from_env(env);
+    let env = EnvFilter::try_from_env("NFTBLOCKD_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
+    let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
+    tracing_subscriber::fmt()
+        .with_timer(timer)
+        .with_target(true)
+        .with_env_filter(env)
+        .init();
 
     let blocklist_split_string = env::var("NFTBLOCKD_BLOCKLIST_SPLIT_STRING")
         .ok()
