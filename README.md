@@ -130,7 +130,9 @@ nftblockd --delete
 ```
 
 ### Logging
+
 You can view logs using the `journalctl -ekf | grep nftblockd` command.
+
 ```shell
 journalctl -ekf | grep nftblockd
 Jul 23 18:03:21 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC=bc:24:11:a3:0e:dc:ec:13:db:94:82:c0:08:00 SRC=91.191.209.13 DST=147.251.6.171 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=38244 PROTO=TCP SPT=52783 DPT=3397 WINDOW=1024 RES=0x00 SYN URGP=0 
@@ -159,6 +161,8 @@ variables:
 | `NFTBLOCKD_BLOCKLIST_SPLIT_STRING` | The string that is used to split the fetched blocklist                                      | Any whitespaces    |
 | `NFTBLOCKD_REQUEST_HEADERS`        | A json in the format `{ "header_key1" : "header_value1", "header_key2" : "header_value2" }` | None               |
 | `NFTBLOCKD_REQUEST_TIMEOUT`        | A global timeout for requests                                                               |
+| `NFTBLOCKD_RETRY_INTERVAL`         | Retry interval in seconds in case of fatal errors                                           | 1                  |
+| `NFTBLOCKD_RETRY_COUNT`            | Number of retry attempts in case of fatal errors                                            | 5                  |
 | `NFTBLOCKD_INTERVAL`               | Interval (in seconds) for updating blocklists.                                              | `30`               |
 | `NFTBLOCKD_LOG_LEVEL`              | Logging level. Options: `debug`, `info`, `warn`, `error`.                                   | `info`             |
 | `NFTBLOCKD_ANTI_LOCKOUT_IPV4`      | A whitespace separated list of IPv4 anti-lockout IPs (e.g., admin IP).                      | None               |
