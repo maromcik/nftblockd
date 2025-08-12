@@ -115,7 +115,7 @@ where
     T: ListNetwork,
 {
     let mut ips = ips?;
-    ips.sort_by_key(|ip| ip.network_prefix());
+    ips.sort_by_key(ListNetwork::network_prefix);
     let mut root = TrieNode::new();
     let mut result = Vec::new();
     for ip in ips {
