@@ -1,4 +1,4 @@
-use crate::iptrie::BitIp;
+use crate::utils::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use std::fmt::Debug;
 

@@ -1,6 +1,6 @@
 use crate::error::AppError;
-use crate::nftables::SetElements;
-use crate::subnet::SubnetList;
+use crate::nftables::builder::SetElements;
+use crate::utils::subnet::SubnetList;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomSet<'a> {

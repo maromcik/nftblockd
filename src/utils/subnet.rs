@@ -1,10 +1,11 @@
 use crate::error::{AppError, AppErrorKind};
-use crate::iptrie::deduplicate;
-use crate::network::ListNetwork;
-use crate::nftables::get_nft_expressions;
+use crate::nftables::builder::SetElements;
+use crate::utils::iptrie::deduplicate;
+use crate::utils::network::ListNetwork;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use log::warn;
-use nftables::expr::Expression;
+use nftables::expr::{Expression, NamedExpression, Prefix};
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -192,7 +193,7 @@ where
             }
             Err(e) => {
                 if strict {
-                    return Err(AppError::from(e));
+                    return Err(AppError::new(AppErrorKind::ParseError, format!("{e}: {ip}").as_str()));
                 }
                 warn!("ip could not be parsed: {ip}; {e}");
             }
@@ -204,6 +205,33 @@ where
     } else {
         Some(parsed)
     })
+}
+
+/// Converts a vector of subnets into `nftables` expressions.
+///
+/// # Type Parameters
+/// - `T`: A type implementing the `BlockListNetwork` trait (e.g., `Ipv4Network`, `Ipv6Network`).
+///
+/// # Parameters
+/// - `ips`: A vector of subnets `T` to be transformed.
+///
+/// # Returns
+/// A `SetElements` vector of `nftables` expressions.
+#[must_use]
+pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
+where
+    T: ListNetwork,
+{
+    Some(
+        ips?.iter()
+            .map(|ip| {
+                Expression::Named(NamedExpression::Prefix(Prefix {
+                    addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
+                    len: u32::from(ip.network_prefix()),
+                }))
+            })
+            .collect::<Vec<Expression>>(),
+    )
 }
 
 // pub fn validate_subnets<T>(ips: Vec<String>) -> Vec<T>

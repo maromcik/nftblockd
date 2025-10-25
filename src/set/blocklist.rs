@@ -1,6 +1,7 @@
 use crate::error::{AppError, AppErrorKind};
-use crate::nftables::{NftConfig, SetElements};
-use crate::subnet::{SubnetList, parse_from_string};
+use crate::nftables::builder::SetElements;
+use crate::nftables::config::NftConfig;
+use crate::utils::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
 use std::time::Duration;

@@ -1,7 +1,7 @@
 use nftables::expr::{Expression, NamedExpression, Prefix};
-use nftblockd::custom_set::CustomSet;
 use nftblockd::error::{AppError, AppErrorKind};
-use nftblockd::subnet::parse_from_string;
+use nftblockd::set::custom_set::CustomSet;
+use nftblockd::utils::subnet::parse_from_string;
 use std::borrow::Cow;
 
 #[test]
@@ -124,7 +124,7 @@ fn test_ipv4_with_invalid_ip() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax",
+        "invalid address: invalid IPv4 address syntax: 300.300.300.300/32",
     );
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
@@ -141,7 +141,7 @@ fn test_ipv4_with_invalid_cidr() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix");
+    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix: 10.0.0.0/33");
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
 }
@@ -159,7 +159,7 @@ fn test_ipv4_with_malformed_input() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax",
+        "invalid address: invalid IPv4 address syntax: foobar",
     );
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
@@ -178,7 +178,7 @@ fn test_ipv4_with_only_invalid_entries() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax",
+        "invalid address: invalid IPv4 address syntax: xyz",
     );
 
     assert_eq!(
@@ -312,7 +312,7 @@ fn test_ipv6_with_invalid_address() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax",
+        "invalid address: invalid IPv6 address syntax: not_an_ip",
     );
 
     assert_eq!(actual, expected, "Invalid addresses should be ignored.");
@@ -358,7 +358,7 @@ fn test_ipv6_with_malformed_input() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax",
+        "invalid address: invalid IPv6 address syntax: foobar",
     );
 
     assert_eq!(
@@ -380,7 +380,7 @@ fn test_ipv6_with_only_invalid_entries() {
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax",
+        "invalid address: invalid IPv6 address syntax: xyz",
     );
 
     assert_eq!(
@@ -400,7 +400,7 @@ fn test_ipv6_with_partial_invalid_entries() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix");
+    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix: ::1/129");
 
     assert_eq!(
         actual, expected,

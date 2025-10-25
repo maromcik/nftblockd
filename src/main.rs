@@ -1,7 +1,7 @@
 use clap::Parser;
 use log::{error, info, warn};
-use nftblockd::blocklist::BlockList;
-use nftblockd::nftables::NftConfig;
+use nftblockd::nftables::config::NftConfig;
+use nftblockd::set::blocklist::BlockList;
 use std::env;
 use std::process::exit;
 use std::thread::sleep;
@@ -104,7 +104,7 @@ fn main() {
         });
 
     // Initialize the `nftables` configuration.
-    let config = NftConfig::new().unwrap_or_else(|e| {
+    let config = NftConfig::new(blocklist_split_string.as_deref()).unwrap_or_else(|e| {
         error!("{e}");
         exit(1);
     });
