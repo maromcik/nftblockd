@@ -154,24 +154,27 @@ Jul 24 11:55:34 proxy-dev kernel: nftblockd;prerouting;dropped: IN=eth0 OUT= MAC
 `nftblockd` supports configuring various parameters through environment variables. Here's a list of the configurable
 variables:
 
-| Environment Variable               | Description                                                                                 | Default Value      |
-|------------------------------------|---------------------------------------------------------------------------------------------|--------------------|
-| `NFTBLOCKD_IPV4_URL`               | The IPv4 blocklist fetching URL.                                                            | None               |
-| `NFTBLOCKD_IPV6_URL`               | The IPv6 blocklist fetching URL.                                                            | None               |
-| `NFTBLOCKD_BLOCKLIST_SPLIT_STRING` | The string that is used to split the fetched blocklist                                      | Any whitespaces    |
-| `NFTBLOCKD_REQUEST_HEADERS`        | A json in the format `{ "header_key1" : "header_value1", "header_key2" : "header_value2" }` | None               |
-| `NFTBLOCKD_REQUEST_TIMEOUT`        | A global timeout for requests                                                               |
-| `NFTBLOCKD_RETRY_INTERVAL`         | Retry interval in seconds in case of fatal errors                                           | 1                  |
-| `NFTBLOCKD_RETRY_COUNT`            | Number of retry attempts in case of fatal errors                                            | 5                  |
-| `NFTBLOCKD_INTERVAL`               | Interval (in seconds) for updating blocklists.                                              | `30`               |
-| `NFTBLOCKD_LOG_LEVEL`              | Logging level. Options: `debug`, `info`, `warn`, `error`.                                   | `info`             |
-| `NFTBLOCKD_ANTI_LOCKOUT_IPV4`      | A whitespace separated list of IPv4 anti-lockout IPs (e.g., admin IP).                      | None               |
-| `NFTBLOCKD_ANTI_LOCKOUT_IPV6`      | A whitespace separated list of IPv6 anti-lockout IPs (e.g., admin IP).                      | None               |
-| `NFTBLOCKD_TABLE_NAME`             | The name of the `nftables` blocklist table.                                                 | `nftblockd`        |
-| `NFTBLOCKD_PREROUTING_CHAIN_NAME`  | The name of the `nftables` prerouting chain in the blocklist table.                         | `prerouting`       |
-| `NFTBLOCKD_POSTROUTING_CHAIN_NAME` | The name of the `nftables` postrouting chain in the blocklist table.                        | `postrouting`      |
-| `NFTBLOCKD_BLOCKLIST_SET_NAME`     | The name of the blocklist set within the table.                                             | `blocklist_set`    |
-| `NFTBLOCKD_ANTI_LOCKOUT_SET_NAME`  | The name of the blocklist set within the table.                                             | `anti_lockout_set` |
+| Environment Variable                   | Description                                                                                 | Default Value          |
+|----------------------------------------|---------------------------------------------------------------------------------------------|------------------------|
+| `NFTBLOCKD_IPV4_URL`                   | The IPv4 blocklist fetching URL.                                                            | None                   |
+| `NFTBLOCKD_IPV6_URL`                   | The IPv6 blocklist fetching URL.                                                            | None                   |
+| `NFTBLOCKD_REQUEST_HEADERS`            | A json in the format `{ "header_key1" : "header_value1", "header_key2" : "header_value2" }` | None                   |
+| `NFTBLOCKD_ANTI_LOCKOUT_IPV4`          | A whitespace separated list of IPv4 anti-lockout IPs (e.g., admin IP).                      | None                   |
+| `NFTBLOCKD_ANTI_LOCKOUT_IPV6`          | A whitespace separated list of IPv6 anti-lockout IPs (e.g., admin IP).                      | None                   |
+| `NFTBLOCKD_CUSTOM_BLOCKLIST_PATH_IPV4` | A path to a file with IPv4 address to be blocked in the custom local blocklist              | None                   |
+| `NFTBLOCKD_CUSTOM_BLOCKLIST_PATH_IPV6` | A path to a file with IPv6 address to be blocked in the custom local blocklist              | None                   |
+| `NFTBLOCKD_BLOCKLIST_SPLIT_STRING`     | The string that is used to split the fetched blocklist                                      | Any whitespaces        |
+| `NFTBLOCKD_REQUEST_TIMEOUT`            | A global timeout for requests                                                               | 10                     |
+| `NFTBLOCKD_RETRY_INTERVAL`             | Retry interval in seconds in case of fatal errors                                           | 1                      |
+| `NFTBLOCKD_RETRY_COUNT`                | Number of retry attempts in case of fatal errors                                            | 5                      |
+| `NFTBLOCKD_INTERVAL`                   | Interval (in seconds) for updating blocklists.                                              | `30`                   |
+| `NFTBLOCKD_LOG_LEVEL`                  | Logging level. Options: `debug`, `info`, `warn`, `error`.                                   | `info`                 |
+| `NFTBLOCKD_TABLE_NAME`                 | The name of the `nftables` blocklist table.                                                 | `nftblockd`            |
+| `NFTBLOCKD_PREROUTING_CHAIN_NAME`      | The name of the `nftables` prerouting chain in the blocklist table.                         | `prerouting`           |
+| `NFTBLOCKD_POSTROUTING_CHAIN_NAME`     | The name of the `nftables` postrouting chain in the blocklist table.                        | `postrouting`          |
+| `NFTBLOCKD_BLOCKLIST_SET_NAME`         | The name of the blocklist set within the table.                                             | `blocklist_set`        |
+| `NFTBLOCKD_ANTI_LOCKOUT_SET_NAME`      | The name of the blocklist set within the table.                                             | `anti_lockout_set`     |
+| `NFTBLOCKD_CUSTOM_BLOCKLIST_SET_NAM`   | The name of a custom, local blocklist set within the table.                                 | `custom_blocklist_set` |
 
 You can use these variables via an `.env` file for easy configuration:
 
