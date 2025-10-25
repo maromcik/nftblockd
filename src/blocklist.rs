@@ -97,7 +97,7 @@ impl BlockList {
             .body_mut()
             .read_to_string()?;
 
-        let blocklist = parse_from_string(Some(body.trim()), self.split_string.as_deref());
+        let blocklist = parse_from_string(Some(body.trim()).as_ref(), self.split_string.as_deref());
 
         info!("blocklist fetched from: {endpoint}");
         Ok(blocklist)
@@ -180,7 +180,7 @@ impl BlockList {
         let ipv4 = self.update_ipv4()?;
         let ipv6 = self.update_ipv6()?;
 
-        config.apply_nft(ipv4, ipv6)?;
+        config.apply_nft(&ipv4, &ipv6)?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
     }

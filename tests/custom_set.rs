@@ -1,16 +1,21 @@
 use nftables::expr::{Expression, NamedExpression, Prefix};
-use nftblockd::anti_lockout::AntiLockoutSet;
+use nftblockd::custom_set::CustomSet;
 use nftblockd::error::{AppError, AppErrorKind};
+use nftblockd::subnet::parse_from_string;
 use std::borrow::Cow;
 
 #[test]
-fn test_valid_anti_lockout_set() {
+fn test_valid_custom_set() {
     let subnets = "192.168.1.0/24 192.168.0.0/16".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap()
+    .ipv4_elements
+    .unwrap();
 
     // Expected subnets after deduplication:
     let expected = vec![Expression::Named(NamedExpression::Prefix(Prefix {
@@ -24,12 +29,15 @@ fn test_valid_anti_lockout_set() {
 }
 
 #[test]
-fn test_anti_lockout_set_not_network() {
+fn test_custom_set_not_network() {
     let subnets = "192.168.1.0 192.168.0.2/16".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     // Expected subnets after deduplication:
     let expected = AppError::new(
@@ -43,26 +51,33 @@ fn test_anti_lockout_set_not_network() {
 }
 
 #[test]
-fn test_empty_anti_lockout_set() {
+fn test_empty_custom_set() {
     let subnets = "".to_string();
 
-    let err = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap()
+    .ipv4_elements;
 
     assert_eq!(
-        err, None,
+        actual, None,
         "The deduplicated subnets did not match the expected list."
     );
 }
 
 #[test]
-fn test_empty_anti_lockout_set_after_parsing() {
+fn test_empty_custom_set_after_parsing() {
     let subnets = "192.168.1.3/24 300.300.300.300/32".to_string();
 
-    let err = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     // Expected subnets after deduplication:
     let expected = AppError::new(
@@ -70,7 +85,7 @@ fn test_empty_anti_lockout_set_after_parsing() {
         "invalid ip: 192.168.1.3/24; not a network",
     );
     assert_eq!(
-        err, expected,
+        actual, expected,
         "The deduplicated subnets did not match the expected list."
     );
 }
@@ -79,10 +94,14 @@ fn test_empty_anti_lockout_set_after_parsing() {
 fn test_valid_mixed_ipv4_set_deduplicated() {
     let subnets = "10.0.0.0/8 10.0.0.1/32 10.1.0.0/16".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap()
+    .ipv4_elements
+    .unwrap();
 
     let expected = vec![Expression::Named(NamedExpression::Prefix(Prefix {
         addr: Box::new(Expression::String(Cow::from("10.0.0.0"))),
@@ -96,9 +115,12 @@ fn test_valid_mixed_ipv4_set_deduplicated() {
 fn test_ipv4_with_invalid_ip() {
     let subnets = "192.168.1.0/24 300.300.300.300/32".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -112,9 +134,12 @@ fn test_ipv4_with_invalid_ip() {
 fn test_ipv4_with_invalid_cidr() {
     let subnets = "192.168.1.0/24 10.0.0.0/33".to_string(); // /33 invalid for IPv4
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix");
 
@@ -125,9 +150,12 @@ fn test_ipv4_with_invalid_cidr() {
 fn test_ipv4_with_malformed_input() {
     let subnets = "foobar 10.0.0.0/8 baz/24".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -141,9 +169,12 @@ fn test_ipv4_with_malformed_input() {
 fn test_ipv4_with_only_invalid_entries() {
     let subnets = "xyz 256.256.256.256/24 /32 blah".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Some(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -160,10 +191,14 @@ fn test_ipv4_with_only_invalid_entries() {
 fn test_ipv4_with_valid_entries() {
     let subnets = "10.0.0.0/8 192.168.0.0/16 100.90.0.1".to_string();
 
-    let actual = AntiLockoutSet::IPv4(Some(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap()
+    .ipv4_elements
+    .unwrap();
 
     let expected = vec![
         Expression::Named(NamedExpression::Prefix(Prefix {
@@ -185,12 +220,15 @@ fn test_ipv4_with_valid_entries() {
 
 #[test]
 fn test_ipv4_only_loopback_and_zero() {
-    let subnets = "127.0.0.1/32 0.0.0.0/0".to_string();
-
-    let actual = AntiLockoutSet::IPv4(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let subnets = "127.0.0.1/32 0.0.0.0/0";
+    let actual = CustomSet::new(
+        "set".to_string(),
+        parse_from_string(Some(subnets), None),
+        None,
+    )
+    .unwrap()
+    .ipv4_elements
+    .unwrap();
 
     let expected = vec![Expression::Named(NamedExpression::Prefix(Prefix {
         addr: Box::new(Expression::String(Cow::from("0.0.0.0"))),
@@ -204,13 +242,17 @@ fn test_ipv4_only_loopback_and_zero() {
 }
 
 #[test]
-fn test_valid_ipv6_anti_lockout_set() {
-    let subnets = "2001:db8::/32 2001:db8:1::/48".to_string();
+fn test_valid_ipv6_custom_set() {
+    let subnets = "2001:db8::/32 2001:db8:1::/48";
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap()
+    .ipv6_elements
+    .unwrap();
 
     let expected = vec![Expression::Named(NamedExpression::Prefix(Prefix {
         addr: Box::new(Expression::String(Cow::from("2001:db8::"))),
@@ -221,12 +263,15 @@ fn test_valid_ipv6_anti_lockout_set() {
 }
 
 #[test]
-fn test_ipv6_anti_lockout_set_not_network() {
-    let subnets = "2001:db8::/32 2001:db8::1/48".to_string();
+fn test_ipv6_custom_set_not_network() {
+    let subnets = "2001:db8::/32 2001:db8::1/48";
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -240,23 +285,30 @@ fn test_ipv6_anti_lockout_set_not_network() {
 }
 
 #[test]
-fn test_empty_ipv6_anti_lockout_set() {
+fn test_empty_ipv6_custom_set() {
     let subnets = "".to_string();
 
-    let err = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap()
+    .ipv6_elements;
 
-    assert_eq!(err, None, "Empty input should trigger a parsing error.");
+    assert_eq!(actual, None, "Empty input should trigger a parsing error.");
 }
 
 #[test]
 fn test_ipv6_with_invalid_address() {
     let subnets = "2001:db8::/32 not_an_ip".to_string();
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -270,10 +322,14 @@ fn test_ipv6_with_invalid_address() {
 fn test_ipv6_with_valid_cidr() {
     let subnets = "2001:db8::/128 2001:db8:abcd::/48".to_string();
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap()
+    .ipv6_elements
+    .unwrap();
 
     let expected = vec![
         Expression::Named(NamedExpression::Prefix(Prefix {
@@ -293,9 +349,12 @@ fn test_ipv6_with_valid_cidr() {
 fn test_ipv6_with_malformed_input() {
     let subnets = "foobar 2001:db8::/32 ::1/129".to_string();
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
@@ -312,25 +371,34 @@ fn test_ipv6_with_malformed_input() {
 fn test_ipv6_with_only_invalid_entries() {
     let subnets = "xyz ::g/64 2001:db8::/999".to_string();
 
-    let err = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap_err();
 
     let expected = AppError::new(
         AppErrorKind::ParseError,
         "invalid address: invalid IPv6 address syntax",
     );
 
-    assert_eq!(err, expected, "All invalid entries should lead to error.");
+    assert_eq!(
+        actual, expected,
+        "All invalid entries should lead to error."
+    );
 }
 
 #[test]
 fn test_ipv6_with_partial_invalid_entries() {
     let subnets = "2001:4860:4860::/64 ::1/129".to_string();
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap_err();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap_err();
 
     let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix");
 
@@ -344,10 +412,14 @@ fn test_ipv6_with_partial_invalid_entries() {
 fn test_ipv6_loopback_and_full_block() {
     let subnets = "::1 ::/0".to_string();
 
-    let actual = AntiLockoutSet::IPv6(Option::from(subnets))
-        .build_anti_lockout()
-        .unwrap()
-        .unwrap();
+    let actual = CustomSet::new(
+        "set".to_string(),
+        None,
+        parse_from_string(Some(subnets), None),
+    )
+    .unwrap()
+    .ipv6_elements
+    .unwrap();
 
     let expected = vec![Expression::Named(NamedExpression::Prefix(Prefix {
         addr: Box::new(Expression::String(Cow::from("::"))),

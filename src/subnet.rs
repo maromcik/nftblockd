@@ -133,11 +133,24 @@ impl<'a> NftExpressionSubnetList<'a> {
 /// # Returns
 /// A vector of subnet strings.
 #[must_use]
-pub fn parse_from_string(s: Option<&str>, split_string: Option<&str>) -> Option<Vec<String>> {
-    match s {
-        Some(s) if !s.is_empty() => match split_string {
-            None => Some(s.split_whitespace().map(|s| s.trim().to_string()).collect()),
-            Some(split_str) => Some(s.split(split_str).map(|s| s.trim().to_string()).collect()),
+pub fn parse_from_string<S: AsRef<str>>(
+    data: Option<S>,
+    split_string: Option<&str>,
+) -> Option<Vec<String>> {
+    match data {
+        Some(s) if !s.as_ref().is_empty() => match split_string {
+            None => Some(
+                s.as_ref()
+                    .split_whitespace()
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+            ),
+            Some(split_str) => Some(
+                s.as_ref()
+                    .split(split_str)
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+            ),
         },
         _ => None,
     }
@@ -163,7 +176,7 @@ where
     AppError: From<<T as FromStr>::Err>,
 {
     let mut parsed = Vec::new();
-    for ip in ips.iter() {
+    for ip in ips {
         match ip.parse::<T>() {
             Ok(parsed_ip) => {
                 if parsed_ip.is_network() {
