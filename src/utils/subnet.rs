@@ -193,7 +193,10 @@ where
             }
             Err(e) => {
                 if strict {
-                    return Err(AppError::new(AppErrorKind::ParseError, format!("{e}: {ip}").as_str()));
+                    return Err(AppError::new(
+                        AppErrorKind::ParseError,
+                        format!("{e}: {ip}").as_str(),
+                    ));
                 }
                 warn!("ip could not be parsed: {ip}; {e}");
             }
