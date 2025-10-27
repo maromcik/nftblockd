@@ -2,6 +2,7 @@ use clap::Parser;
 use log::{error, info, warn};
 use nftblockd::nftables::config::NftConfig;
 use nftblockd::set::blocklist::BlockList;
+use rand::Rng;
 use std::env;
 use std::process::exit;
 use std::thread::sleep;
@@ -96,7 +97,7 @@ fn main() {
         });
 
     let retry_count = env::var("NFTBLOCKD_RETRY_COUNT")
-        .unwrap_or("5".to_string())
+        .unwrap_or("20".to_string())
         .parse::<u64>()
         .unwrap_or_else(|e| {
             error!("{e}");
@@ -150,8 +151,12 @@ fn main() {
             }
             Err(e) => {
                 error!("{e}");
-                warn!("retrying, attempt {counter} out of {retry_count}");
-                sleep(Duration::from_secs(retry_interval));
+                let ms = retry_interval * 1000;
+                let sleep_interval = rand::rng().random_range(ms / 2..ms * 2);
+                sleep(Duration::from_millis(sleep_interval));
+                warn!(
+                    "paused for {sleep_interval} ms; retrying; attempt {counter} out of {retry_count}"
+                );
                 if counter >= retry_count {
                     error!("failed to update nftables blocklist after {retry_count} retries");
                     exit(3);
