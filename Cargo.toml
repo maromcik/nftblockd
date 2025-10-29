@@ -1,6 +1,6 @@
 [package]
 name = "nftblockd"
-version = "1.5.0"
+version = "1.5.1"
 edition = "2024"
 
 [dependencies]
@@ -15,4 +15,3 @@ dotenvy = "0.15.7"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "local-time"] }
 rand = "0.9.2"
-

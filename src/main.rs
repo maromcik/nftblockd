@@ -97,7 +97,7 @@ fn main() {
         });
 
     let retry_count = env::var("NFTBLOCKD_RETRY_COUNT")
-        .unwrap_or("20".to_string())
+        .unwrap_or("5".to_string())
         .parse::<u64>()
         .unwrap_or_else(|e| {
             error!("{e}");
