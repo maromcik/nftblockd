@@ -123,8 +123,7 @@ fn main() {
 
     // Check that at least one URL (IPv4 or IPv6) is specified; otherwise, exit early.
     if cli.url.url4.is_none() && cli.url.url6.is_none() {
-        warn!("no url provided");
-        return;
+        warn!("no blocklist url provided");
     }
 
     let blocklist = BlockList::new(
