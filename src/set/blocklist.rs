@@ -1,4 +1,4 @@
-use crate::error::{AppError, AppErrorKind};
+use crate::error::AppError;
 use crate::nftables::builder::SetElements;
 use crate::nftables::config::NftConfig;
 use crate::utils::subnet::{SubnetList, parse_from_string};
@@ -89,12 +89,7 @@ impl BlockList {
 
         let call = request.call();
         let body = call
-            .map_err(|e| {
-                AppError::new(
-                    AppErrorKind::RequestError,
-                    format!("failed to fetch from {endpoint}: {e}").as_str(),
-                )
-            })?
+            .map_err(|e| AppError::RequestError(format!("failed to fetch from {endpoint}: {e}")))?
             .body_mut()
             .read_to_string()?;
 

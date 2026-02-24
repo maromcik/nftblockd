@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use nftnl::{Batch, Chain, Policy, ProtoFamily, Table};
-
+use crate::error::AppError;
 // pub type SetElements<'a> = Vec<Expression<'a>>;
 
 /// Represents the direction of a rule in the firewall chain (source or destination).
@@ -48,6 +48,8 @@ impl Display for RuleProto {
 #[derive(Default)]
 pub struct NftRulesetBuilder<'a> {
     pub batch: nftnl::Batch,
+    pub tables: HashMap<String, nftnl::Table>,
+    pub chains: HashMap<String, nftnl::Table>,
 }
 
 impl<'a> NftRulesetBuilder<'a> {
@@ -55,6 +57,8 @@ impl<'a> NftRulesetBuilder<'a> {
     pub fn new() -> Self {
         Self {
             batch: Batch::new(),
+            tables: HashMap::new(),
+            chains: HashMap::new(),
         }
     }
 
@@ -84,6 +88,7 @@ impl<'a> NftRulesetBuilder<'a> {
     pub fn build_table(mut self, table_name: &'a str) -> Self {
         let table = Table::new(table_name.as_ref(), ProtoFamily::Inet);
         self.batch.add(&table, nftnl::MsgType::Add);
+        self.tables.entry(table_name.to_string()).or_insert(table);
         self
     }
 
@@ -104,12 +109,12 @@ impl<'a> NftRulesetBuilder<'a> {
         chain_name: &'a str,
         chain_hook: nftnl::Hook,
         priority: i32,
-    ) -> Self {
-        let table = Table::new(table_name.as_ref(), ProtoFamily::Inet);
+    ) -> Result<AppError, Self> {
+        let table = self.tables.get(table_name).ok_or(|| AppError::new(App));
         let mut chain = Chain::new(chain_name.as_ref(), &table);
-
-        chain.set_hook(nftnl::Hook::PreRouting, 0);
+        chain.set_hook(chain_hook, priority);
         chain.set_policy(Policy::Accept);
+        chain.set_type(nftnl::ChainType::Filter);
 
         self
     }

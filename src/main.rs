@@ -2,7 +2,7 @@ use clap::Parser;
 use log::{error, info, warn};
 use nftblockd::nftables::config::NftConfig;
 use nftblockd::set::blocklist::BlockList;
-use rand::Rng;
+use rand::RngExt;
 use std::env;
 use std::process::exit;
 use std::thread::sleep;
