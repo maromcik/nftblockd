@@ -8,7 +8,7 @@ use nftables::schema::{Nftables, SetType};
 use nftables::stmt::Statement;
 use nftables::types::NfHook;
 use std::env;
-use nftnl::{Batch, Table};
+use nftnl::{Batch, ProtoFamily, Table};
 use tracing::{debug, info};
 
 /// Defines the configuration structure for managing `nftables`.
@@ -117,7 +117,9 @@ impl<'a> NftConfig<'a> {
         let table = self.table_name.as_str();
 
         let mut batch = Batch::new();
-        let table = Table::new()
+        let table_new = Table::new(table.as_ref(), ProtoFamily::Inet);
+
+
 
         let mut builder = NftRulesetBuilder::new()
             .build_table(table)
