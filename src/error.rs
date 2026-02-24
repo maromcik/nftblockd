@@ -89,3 +89,9 @@ impl From<serde_json::Error> for AppError {
         AppError::DeserializeError(value.to_string())
     }
 }
+
+impl From<std::ffi::NulError> for AppError {
+    fn from(value: std::ffi::NulError) -> Self {
+        AppError::ParseError(value.to_string())
+    }
+}

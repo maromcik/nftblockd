@@ -15,4 +15,4 @@ dotenvy = "0.15.7"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time"] }
 rand = "0.10.0"
-
+nftnl = "0.9.1"

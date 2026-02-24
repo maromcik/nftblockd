@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::ffi::{CStr, CString};
 use std::fmt::Display;
 use nftnl::{Batch, Chain, Policy, ProtoFamily, Table};
 use crate::error::AppError;
@@ -48,8 +49,8 @@ impl Display for RuleProto {
 #[derive(Default)]
 pub struct NftRulesetBuilder<'a> {
     pub batch: nftnl::Batch,
-    pub tables: HashMap<String, nftnl::Table>,
-    pub chains: HashMap<String, nftnl::Table>,
+    pub tables: HashMap<&'a str, nftnl::Table>,
+    pub chains: HashMap<&'a str, nftnl::Chain<'a>>,
 }
 
 impl<'a> NftRulesetBuilder<'a> {
@@ -71,10 +72,11 @@ impl<'a> NftRulesetBuilder<'a> {
     /// # Returns
     /// An `NfObject` encapsulating the delete operation.
     #[must_use]
-    pub fn delete_table(mut self, table_name: &str) -> Self {
-        let table = Table::new(table_name.as_ref(), ProtoFamily::Inet);
+    pub fn delete_table(mut self, table_name: &str) -> Result<Self, AppError> {
+        let c_table_name = CString::new(table_name)?;
+        let table = Table::new(c_table_name.as_ref(), ProtoFamily::Inet);
         self.batch.add(&table, nftnl::MsgType::Del);
-        self
+        Ok(self)
     }
 
     /// Creates (or declares) a new table in `nftables`.
@@ -85,11 +87,12 @@ impl<'a> NftRulesetBuilder<'a> {
     /// # Returns
     /// An `NfObject` encapsulating the create operation.
     #[must_use]
-    pub fn build_table(mut self, table_name: &'a str) -> Self {
-        let table = Table::new(table_name.as_ref(), ProtoFamily::Inet);
+    pub fn build_table(mut self, table_name: &'a str) -> Result<Self, AppError> {
+        let c_table_name = CString::new(table_name)?;
+        let table = Table::new(c_table_name.as_ref(), ProtoFamily::Inet);
         self.batch.add(&table, nftnl::MsgType::Add);
-        self.tables.entry(table_name.to_string()).or_insert(table);
-        self
+        self.tables.entry(table_name).or_insert(table);
+        Ok(self)
     }
 
     /// Builds a chain within a specific table, associating it with a particular hook (e.g., `prerouting`).
@@ -109,14 +112,15 @@ impl<'a> NftRulesetBuilder<'a> {
         chain_name: &'a str,
         chain_hook: nftnl::Hook,
         priority: i32,
-    ) -> Result<AppError, Self> {
-        let table = self.tables.get(table_name).ok_or(|| AppError::new(App));
-        let mut chain = Chain::new(chain_name.as_ref(), &table);
+    ) -> Result<Self, AppError> {
+        let c_chain_name = CString::new(chain_name)?;
+        let table = self.tables.remove(table_name).ok_or(AppError::TableNotFound(table_name.to_string()))?;
+        let mut chain = Chain::new(c_chain_name.as_ref(), &table);
         chain.set_hook(chain_hook, priority);
         chain.set_policy(Policy::Accept);
         chain.set_type(nftnl::ChainType::Filter);
-
-        self
+        self.batch.add(&chain, nftnl::MsgType::Add);
+        Ok(self)
     }
 
     /// Creates a set structure in the `nftables` ruleset.
@@ -129,7 +133,12 @@ impl<'a> NftRulesetBuilder<'a> {
     /// # Returns
     /// An `NfObject` representing the creation of the set.
     #[must_use]
-    pub fn build_set(mut self, table_name: &'a str, set_name: String, set_type: &SetType) -> Self {
+    pub fn build_set(mut self, table_name: &'a str, set_name: String, set_type: &SetType) -> Result<Self, AppError> {
+        let c_set_name = CString::new(set_name.clone())?;
+        let table = self.tables.remove(table_name).ok_or(AppError::TableNotFound(table_name.to_string()))?;
+        let set = nftnl::set::Set::new(c_set_name.as_ref(), 0, &table, ProtoFamily::Inet);
+        set.add()
+
         self.batch
             .push(NfObject::ListObject(Set(Box::new(schema::Set {
                 family: NfFamily::INet,
