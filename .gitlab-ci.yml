@@ -19,6 +19,8 @@ cache:
 
 test:
   stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - rustup default stable
     - rustup component add rustfmt
