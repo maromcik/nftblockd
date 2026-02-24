@@ -1,14 +1,21 @@
+image: rust:latest
+
 stages:
   - test
   - build
   - release
 
+variables:
+  CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
+  RUSTUP_HOME: "${CI_PROJECT_DIR}/.rustup"
+
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - target/
-    - ~/.cargo/registry
-    - ~/.cargo/git
+    - .cargo/registry
+    - .cargo/git
+    - .rustup/
 
 test:
   stage: test
@@ -18,8 +25,6 @@ test:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
     - cargo test --all
-  tags:
-    - alfonz
 
 build:
   stage: build
@@ -32,9 +37,6 @@ build:
     paths:
       - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
     expire_in: 1 week
-  tags:
-    - alfonz
-
 
 publish:
   stage: release
@@ -51,5 +53,3 @@ publish:
     - if: '$CI_COMMIT_TAG'
   needs:
     - build
-  tags:
-    - alfonz
