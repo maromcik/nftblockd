@@ -8,6 +8,7 @@ use nftables::schema::{Nftables, SetType};
 use nftables::stmt::Statement;
 use nftables::types::NfHook;
 use std::env;
+use nftnl::{Batch, Table};
 use tracing::{debug, info};
 
 /// Defines the configuration structure for managing `nftables`.
@@ -114,6 +115,9 @@ impl<'a> NftConfig<'a> {
         let ipv6_custom_blocklist_set_name = format!("{}_ipv6", self.custom_blocklist_set.set_name);
 
         let table = self.table_name.as_str();
+
+        let mut batch = Batch::new();
+        let table = Table::new()
 
         let mut builder = NftRulesetBuilder::new()
             .build_table(table)
