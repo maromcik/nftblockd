@@ -40,6 +40,7 @@ build:
     - cargo build --release --target=x86_64-unknown-linux-musl
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   artifacts:
     paths:
       - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
@@ -61,5 +62,6 @@ publish:
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/latest/${CI_PROJECT_NAME}"
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   needs:
     - build
