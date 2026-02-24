@@ -20,6 +20,7 @@ cache:
 test:
   stage: test
   script:
+    - rustup default stable  # Set default toolchain first
     - rustup component add rustfmt
     - cargo fmt --all -- --check
     - rustup component add clippy
@@ -29,6 +30,7 @@ test:
 build:
   stage: build
   script:
+    - rustup default stable  # Set default toolchain first
     - rustup target add x86_64-unknown-linux-musl
     - cargo build --release --target=x86_64-unknown-linux-musl
   rules:
