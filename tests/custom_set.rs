@@ -1,5 +1,5 @@
 use nftables::expr::{Expression, NamedExpression, Prefix};
-use nftblockd::error::{AppError, AppErrorKind};
+use nftblockd::error::AppError;
 use nftblockd::set::custom_set::CustomSet;
 use nftblockd::utils::subnet::parse_from_string;
 use std::borrow::Cow;
@@ -40,10 +40,7 @@ fn test_custom_set_not_network() {
     .unwrap_err();
 
     // Expected subnets after deduplication:
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid ip: 192.168.0.2/16; not a network",
-    );
+    let expected = AppError::ParseError("invalid ip: 192.168.0.2/16; not a network".to_string());
     assert_eq!(
         actual, expected,
         "The deduplicated subnets did not match the expected list."
@@ -80,10 +77,7 @@ fn test_empty_custom_set_after_parsing() {
     .unwrap_err();
 
     // Expected subnets after deduplication:
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid ip: 192.168.1.3/24; not a network",
-    );
+    let expected = AppError::ParseError("invalid ip: 192.168.1.3/24; not a network".to_string());
     assert_eq!(
         actual, expected,
         "The deduplicated subnets did not match the expected list."
@@ -122,9 +116,8 @@ fn test_ipv4_with_invalid_ip() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax: 300.300.300.300/32",
+    let expected = AppError::ParseError(
+        "invalid address: invalid IPv4 address syntax: 300.300.300.300/32".to_string(),
     );
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
@@ -141,7 +134,7 @@ fn test_ipv4_with_invalid_cidr() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix: 10.0.0.0/33");
+    let expected = AppError::ParseError("invalid prefix: 10.0.0.0/33".to_string());
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
 }
@@ -157,10 +150,8 @@ fn test_ipv4_with_malformed_input() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax: foobar",
-    );
+    let expected =
+        AppError::ParseError("invalid address: invalid IPv4 address syntax: foobar".to_string());
 
     assert_eq!(actual, expected, "Nested subnets should be deduplicated.");
 }
@@ -176,10 +167,8 @@ fn test_ipv4_with_only_invalid_entries() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv4 address syntax: xyz",
-    );
+    let expected =
+        AppError::ParseError("invalid address: invalid IPv4 address syntax: xyz".to_string());
 
     assert_eq!(
         actual, expected,
@@ -273,10 +262,7 @@ fn test_ipv6_custom_set_not_network() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid ip: 2001:db8::1/48; not a network",
-    );
+    let expected = AppError::ParseError("invalid ip: 2001:db8::1/48; not a network".to_string());
 
     assert_eq!(
         actual, expected,
@@ -310,10 +296,8 @@ fn test_ipv6_with_invalid_address() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax: not_an_ip",
-    );
+    let expected =
+        AppError::ParseError("invalid address: invalid IPv6 address syntax: not_an_ip".to_string());
 
     assert_eq!(actual, expected, "Invalid addresses should be ignored.");
 }
@@ -356,10 +340,8 @@ fn test_ipv6_with_malformed_input() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax: foobar",
-    );
+    let expected =
+        AppError::ParseError("invalid address: invalid IPv6 address syntax: foobar".to_string());
 
     assert_eq!(
         actual, expected,
@@ -378,10 +360,8 @@ fn test_ipv6_with_only_invalid_entries() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(
-        AppErrorKind::ParseError,
-        "invalid address: invalid IPv6 address syntax: xyz",
-    );
+    let expected =
+        AppError::ParseError("invalid address: invalid IPv6 address syntax: xyz".to_string());
 
     assert_eq!(
         actual, expected,
@@ -400,7 +380,7 @@ fn test_ipv6_with_partial_invalid_entries() {
     )
     .unwrap_err();
 
-    let expected = AppError::new(AppErrorKind::ParseError, "invalid prefix: ::1/129");
+    let expected = AppError::ParseError("invalid prefix: ::1/129".to_string());
 
     assert_eq!(
         actual, expected,

@@ -1,4 +1,4 @@
-use crate::error::{AppError, AppErrorKind};
+use crate::error::AppError;
 use crate::nftables::builder::SetElements;
 use crate::utils::iptrie::deduplicate;
 use crate::utils::network::ListNetwork;
@@ -183,20 +183,16 @@ where
                 if parsed_ip.is_network() {
                     parsed.push(parsed_ip);
                 } else if strict {
-                    return Err(AppError::new(
-                        AppErrorKind::ParseError,
-                        format!("invalid ip: {parsed_ip}; not a network").as_str(),
-                    ));
+                    return Err(AppError::ParseError(format!(
+                        "invalid ip: {parsed_ip}; not a network"
+                    )));
                 } else {
                     warn!("invalid ip: {ip}; not a network");
                 }
             }
             Err(e) => {
                 if strict {
-                    return Err(AppError::new(
-                        AppErrorKind::ParseError,
-                        format!("{e}: {ip}").as_str(),
-                    ));
+                    return Err(AppError::ParseError(format!("{e}: {ip}")));
                 }
                 warn!("ip could not be parsed: {ip}; {e}");
             }
