@@ -114,7 +114,7 @@ impl<'a> NftRulesetBuilder<'a> {
         priority: i32,
     ) -> Result<Self, AppError> {
         let c_chain_name = CString::new(chain_name)?;
-        let table = self.tables.remove(table_name).ok_or(AppError::TableNotFound(table_name.to_string()))?;
+        let table = self.tables.get(table_name).ok_or(AppError::TableNotFound(table_name.to_string()))?;
         let mut chain = Chain::new(c_chain_name.as_ref(), &table);
         chain.set_hook(chain_hook, priority);
         chain.set_policy(Policy::Accept);
@@ -137,8 +137,7 @@ impl<'a> NftRulesetBuilder<'a> {
         let c_set_name = CString::new(set_name.clone())?;
         let table = self.tables.remove(table_name).ok_or(AppError::TableNotFound(table_name.to_string()))?;
         let set = nftnl::set::Set::new(c_set_name.as_ref(), 0, &table, ProtoFamily::Inet);
-        set.add()
-
+        nftnl::set::Set::add(nftnl::nft_set!())
         self.batch
             .push(NfObject::ListObject(Set(Box::new(schema::Set {
                 family: NfFamily::INet,
