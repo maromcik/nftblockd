@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    name: Test, Clippy, Fmt
+    name: test
     runs-on: ubuntu-latest
 
     steps:
@@ -36,7 +36,7 @@ jobs:
         run: cargo test --all
 
   build:
-    name: Build musl binary
+    name: build
     runs-on: ubuntu-latest
     needs: test
     if: startsWith(github.ref, 'refs/tags/')
@@ -61,11 +61,6 @@ jobs:
       - name: Build
         run: cargo build --release --target=x86_64-unknown-linux-musl
 
-      - name: Rename binary
-        run: |
-          cp target/x86_64-unknown-linux-musl/release/${{ github.event.repository.name }} \
-             target/x86_64-unknown-linux-musl/release/nftblockd
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -73,7 +68,7 @@ jobs:
           path: target/x86_64-unknown-linux-musl/release/nftblockd
 
   release:
-    name: Create Release
+    name: release
     runs-on: ubuntu-latest
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
