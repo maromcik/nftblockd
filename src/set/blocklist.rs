@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::nftables::builder::SetElements;
 use crate::nftables::config::NftConfig;
+use crate::utils::stats::Stats;
 use crate::utils::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
@@ -172,11 +173,11 @@ impl BlockList {
     /// Returns a `Result` indicating success (`Ok(())`) or an `AppError` if any part of the process fails.
     /// # Errors
     /// Will return `AppError` when updating nftables fails
-    pub fn update(&self, config: &NftConfig) -> Result<(), AppError> {
+    pub fn update(&self, config: &NftConfig, stats: &mut Stats) -> Result<(), AppError> {
         let ipv4 = self.update_ipv4()?;
         let ipv6 = self.update_ipv6()?;
 
-        config.apply_nft(&ipv4, &ipv6)?;
+        config.apply_nft(&ipv4, &ipv6, stats)?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
     }

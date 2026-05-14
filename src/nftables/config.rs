@@ -2,12 +2,15 @@ use crate::error::AppError;
 use crate::nftables::builder::{NftRulesetBuilder, RuleDirection, RuleProto, SetElements};
 use crate::set::custom_set::CustomSet;
 use crate::utils::read_ip_set_file;
+use crate::utils::stats::Stats;
 use crate::utils::subnet::parse_from_string;
+use log::error;
 use nftables::helper;
 use nftables::schema::{Nftables, SetType};
 use nftables::stmt::Statement;
 use nftables::types::NfHook;
 use std::env;
+use std::os::linux::raw::stat;
 use tracing::{debug, info};
 
 /// Defines the configuration structure for managing `nftables`.
@@ -320,10 +323,12 @@ impl<'a> NftConfig<'a> {
     /// - Returns an `AppError` if the process of applying the ruleset fails.
     /// - An error may occur if the `nftables` configuration is invalid or communication with
     ///   the `nftables` subsystem fails.
+
     pub fn apply_nft(
         &self,
         ipv4_elements: &Option<SetElements<'a>>,
         ipv6_elements: &Option<SetElements<'a>>,
+        stats: &mut Stats,
     ) -> Result<(), AppError> {
         let ruleset = self.generate_ruleset(ipv4_elements, ipv6_elements);
         debug!(
@@ -331,7 +336,59 @@ impl<'a> NftConfig<'a> {
             serde_json::to_string_pretty(&ruleset)
                 .unwrap_or("Could not convert ruleset to JSON".to_string())
         );
+        for o in helper::get_current_ruleset()?.objects.iter() {
+            match o {
+                nftables::schema::NfObject::ListObject(nf_list_object) => match nf_list_object {
+                    nftables::schema::NfListObject::Rule(rule) => {
+                        let mut rule_info = RuleInfo::default();
+                        for expr in rule.expr.iter() {
+                            match expr {
+                                Statement::Match(m) => match &m.right {
+                                    nftables::expr::Expression::String(st) => {
+                                        if st.starts_with(self.blocklist_set_name.as_str()) {
+                                            rule_info.set_name = st.to_string();
+                                        }
+                                    }
+                                    _ => {}
+                                },
+                                Statement::Counter(counter) => match counter {
+                                    nftables::stmt::Counter::Anonymous(anonymous_counter) => {
+                                        match anonymous_counter {
+                                            Some(c) => {
+                                                if let Some(x) = c.bytes {
+                                                    rule_info.bytes = x;
+                                                    error!("kokot: {x}");
+                                                }
+                                                if let Some(x) = c.packets {
+                                                    rule_info.packets = x;
+                                                    error!("pica: {x}");
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    _ => {}
+                                },
+                                _ => {}
+                            }
+                        }
+                        stats.dropped_bytes += rule_info.bytes as u128;
+                        stats.dropped_packets += rule_info.packets as u128;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        error!("STATS: {stats:?}");
         helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RuleInfo {
+    pub set_name: String,
+    pub packets: usize,
+    pub bytes: usize,
 }

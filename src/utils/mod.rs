@@ -3,6 +3,7 @@ use std::fs;
 
 pub mod iptrie;
 pub mod network;
+pub mod stats;
 pub mod subnet;
 
 pub fn read_ip_set_file<S: AsRef<str>>(path: Option<S>) -> Result<Option<String>, AppError> {

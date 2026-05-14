@@ -2,6 +2,7 @@ use clap::Parser;
 use log::{error, info, warn};
 use nftblockd::nftables::config::NftConfig;
 use nftblockd::set::blocklist::BlockList;
+use nftblockd::utils::stats::Stats;
 use rand::RngExt;
 use std::env;
 use std::process::exit;
@@ -141,9 +142,10 @@ fn main() {
     info!("initialized");
     // Main update loop: Periodically fetch, validate, and apply blocklists.
     let mut counter = 1;
+    let mut stats = Stats::default();
     loop {
         info!("starting updating nftables blocklist");
-        match blocklist.update(&config) {
+        match blocklist.update(&config, &mut stats) {
             Ok(()) => {
                 info!("finished updating nftables blocklist");
                 counter = 1;

@@ -2,7 +2,7 @@ use nftables::expr::{Expression, NamedExpression, Payload, PayloadField};
 use nftables::schema::NfCmd::Delete;
 use nftables::schema::NfListObject::{Chain, Element, Rule, Set, Table};
 use nftables::schema::{NfObject, Nftables, SetType};
-use nftables::stmt::{Log, Match, Operator, Statement};
+use nftables::stmt::{Counter, Log, Match, Operator, Statement};
 use nftables::types::{NfChainPolicy, NfFamily, NfHook};
 use nftables::{schema, types};
 use std::borrow::Cow;
@@ -243,7 +243,7 @@ impl<'a> NftRulesetBuilder<'a> {
 
         // Add counter and verdict to the rule.
         // expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
-        expressions.extend(vec![verdict]);
+        expressions.extend(vec![Statement::Counter(Counter::Anonymous(None)), verdict]);
         // Return the completed `NfObject` for the rule.
         let rule = NfObject::ListObject(Rule(schema::Rule {
             family: NfFamily::INet,
