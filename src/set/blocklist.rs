@@ -5,10 +5,12 @@ use crate::utils::stats::Stats;
 use crate::utils::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
+use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
+#[derive(Clone)]
 pub struct BlockList {
     pub headers: Option<HashMap<String, String>>,
     pub timeout: Duration,
@@ -40,12 +42,16 @@ impl BlockList {
     /// # Errors
     /// Will return `AppError` when parsing headers fails
     pub fn new(
-        headers: Option<String>,
-        timeout: u64,
         ipv4_endpoint: Option<String>,
         ipv6_endpoint: Option<String>,
         split_string: Option<&str>,
     ) -> Result<BlockList, AppError> {
+        let headers = env::var("NFTBLOCKD_REQUEST_HEADERS")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let timeout = env::var("NFTBLOCKD_REQUEST_TIMEOUT")
+            .unwrap_or("10".to_string())
+            .parse::<u64>()?;
         let headers: Option<HashMap<String, String>> = headers
             .map(|h| serde_json::from_str(h.as_str()))
             .transpose()?;
@@ -54,7 +60,7 @@ impl BlockList {
             timeout: Duration::from_secs(timeout),
             ipv4_endpoint,
             ipv6_endpoint,
-            split_string: split_string.map(std::string::ToString::to_string),
+            split_string: split_string.map(ToString::to_string),
         })
     }
 
@@ -75,26 +81,18 @@ impl BlockList {
     /// if the request or parsing fails.
     /// # Errors
     /// Will return `AppError` when fetching blocklist fails
-    fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
-        let config = ureq::Agent::config_builder()
-            .timeout_global(Some(self.timeout))
-            .build();
+    async fn fetch_blocklist(&self, endpoint: &str) -> Result<Option<Vec<String>>, AppError> {
+        let client = reqwest::Client::builder().timeout(self.timeout).build()?;
 
-        let agent = ureq::Agent::new_with_config(config);
-
-        let mut request = agent.get(endpoint);
+        let mut req = client.get(endpoint);
 
         if let Some(headers) = &self.headers {
-            for header in headers {
-                request = request.header(header.0, header.1);
+            for (k, v) in headers {
+                req = req.header(k, v);
             }
         }
 
-        let call = request.call();
-        let body = call
-            .map_err(|e| AppError::RequestError(format!("failed to fetch from {endpoint}: {e}")))?
-            .body_mut()
-            .read_to_string()?;
+        let body = req.send().await?.text().await?;
 
         let blocklist = parse_from_string(Some(body.trim()).as_ref(), self.split_string.as_deref());
 
@@ -114,11 +112,11 @@ impl BlockList {
     /// or an `AppError` if any step during the process fails.
     /// # Errors
     /// Will return `AppError` when parsing subnets fails
-    fn update_ipv4<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
+    async fn update_ipv4<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv4_endpoint.as_deref() else {
             return Ok(None);
         };
-        if let Some(blocklist_ipv4) = self.fetch_blocklist(url)? {
+        if let Some(blocklist_ipv4) = self.fetch_blocklist(url).await? {
             let elems = SubnetList::IPv4(blocklist_ipv4)
                 .validate_blocklist(false)?
                 .deduplicate()?
@@ -143,11 +141,11 @@ impl BlockList {
     /// or an `AppError` if any step during the process fails.
     /// # Errors
     /// Will return `AppError` when parsing subnets fails
-    fn update_ipv6<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
+    async fn update_ipv6<'a>(&self) -> Result<Option<SetElements<'a>>, AppError> {
         let Some(url) = self.ipv6_endpoint.as_deref() else {
             return Ok(None);
         };
-        if let Some(blocklist_ipv6) = self.fetch_blocklist(url)? {
+        if let Some(blocklist_ipv6) = self.fetch_blocklist(url).await? {
             let elems = SubnetList::IPv6(blocklist_ipv6)
                 .validate_blocklist(false)?
                 .deduplicate()?
@@ -180,10 +178,12 @@ impl BlockList {
         config: &NftConfig<'_>,
         stats: Arc<RwLock<Stats>>,
     ) -> Result<(), AppError> {
-        let ipv4 = self.update_ipv4()?;
-        let ipv6 = self.update_ipv6()?;
+        config.generate_stats(stats).await?;
 
-        config.apply_nft(&ipv4, &ipv6, stats).await?;
+        let ipv4 = self.update_ipv4().await?;
+        let ipv6 = self.update_ipv6().await?;
+
+        config.apply_nft(&ipv4, &ipv6)?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
     }

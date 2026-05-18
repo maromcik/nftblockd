@@ -2,19 +2,19 @@ use clap::Parser;
 use log::{error, info, warn};
 use nftblockd::error::AppError;
 use nftblockd::grpc::ctl::nftblockd::status_service_server::StatusServiceServer;
-use nftblockd::grpc::server::ServiceStatusStruct;
+use nftblockd::grpc::server::{Command, ServiceStatusStruct};
 use nftblockd::nftables::config::NftConfig;
 use nftblockd::set::blocklist::BlockList;
 use nftblockd::utils::stats::Stats;
+use nftblockd::utils::status::NftblockdStatus;
 use rand::RngExt;
 use std::env;
 use std::path::Path;
-use std::process::exit;
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tonic::codegen::tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
@@ -78,8 +78,6 @@ impl Drop for SocketGuard {
 async fn main() -> Result<(), AppError> {
     // Parse CLI arguments.
     let mut cli = Cli::parse();
-    let stats = Arc::new(RwLock::new(Stats::default()));
-    let stats_clone = stats.clone();
 
     // Load environment variables from the specified `.env` file (if provided), then re-parse CLI.
     if let Some(env_file) = cli.env_file {
@@ -99,48 +97,9 @@ async fn main() -> Result<(), AppError> {
         .ok()
         .filter(|s| !s.is_empty());
 
-    let request_headers = env::var("NFTBLOCKD_REQUEST_HEADERS")
-        .ok()
-        .filter(|s| !s.is_empty());
-
-    let request_timeout = env::var("NFTBLOCKD_REQUEST_TIMEOUT")
-        .unwrap_or("10".to_string())
-        .parse::<u64>()
-        .unwrap_or_else(|e| {
-            error!("{e}");
-            exit(1);
-        });
-
-    let retry_interval = env::var("NFTBLOCKD_RETRY_INTERVAL")
-        .unwrap_or("2".to_string())
-        .parse::<u64>()
-        .unwrap_or_else(|e| {
-            error!("{e}");
-            exit(1);
-        });
-
-    let retry_count = env::var("NFTBLOCKD_RETRY_COUNT")
-        .unwrap_or("10".to_string())
-        .parse::<u64>()
-        .unwrap_or_else(|e| {
-            error!("{e}");
-            exit(1);
-        });
-
-    // Initialize the `nftables` configuration.
-    let config = NftConfig::new(blocklist_split_string.as_deref()).unwrap_or_else(|e| {
-        error!("{e}");
-        exit(1);
-    });
-
-    // If the delete flag is set, clean up the blocklist table and exit.
+    let mut config = NftConfig::new(blocklist_split_string.as_deref())?;
     if cli.delete {
-        let _ = config.delete_table_and_apply().map_err(|e| {
-            warn!(
-                "the `{}` table (probably) already deleted: {}",
-                config.table_name, e
-            );
-        });
+        flush_table(&config);
         return Ok(());
     }
 
@@ -149,21 +108,16 @@ async fn main() -> Result<(), AppError> {
         warn!("no blocklist url provided");
     }
 
-    let blocklist = BlockList::new(
-        request_headers,
-        request_timeout,
-        cli.url.url4.clone(),
-        cli.url.url6.clone(),
-        blocklist_split_string.as_deref(),
-    )
-    .unwrap_or_else(|e| {
-        error!("{e}");
-        exit(1);
+    let mut channel = tokio::sync::mpsc::channel::<Command>(100);
+    let cancellation_token = CancellationToken::new();
+
+    let status = Arc::new(ServiceStatusStruct {
+        status: Arc::new(RwLock::new(NftblockdStatus::default())),
+        stats: Arc::new(RwLock::new(Stats::default())),
+        command_channel: channel.0.clone(),
     });
 
-    let status = ServiceStatusStruct {
-        stats: stats_clone.clone(),
-    };
+    let status_clone = status.clone();
 
     let socket = bind_socket("/run/nftblockd.sock").await?;
     let _guard = SocketGuard {
@@ -171,7 +125,7 @@ async fn main() -> Result<(), AppError> {
     };
     tokio::spawn(async move {
         if let Err(e) = Server::builder()
-            .add_service(StatusServiceServer::new(status))
+            .add_service(StatusServiceServer::from_arc(status_clone))
             .serve_with_incoming(socket)
             .await
         {
@@ -181,38 +135,91 @@ async fn main() -> Result<(), AppError> {
 
     info!("initialized");
 
-    blocklist_loop(
-        &cli,
-        stats.clone(),
-        blocklist,
-        &config,
-        retry_count,
-        retry_interval,
-    )
-    .await;
+    config = spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref())?;
 
-    Ok(())
-    // Main update loop: Periodically fetch, validate, and apply blocklists.
+    loop {
+        tokio::select! {
+            cmd = channel.1.recv() => {
+            match cmd {
+                Some(Command::Flush) => {
+                    cancellation_token.cancel();
+                    flush_table(&config);
+                }
+                Some(Command::Reload) => {
+                    cancellation_token.cancel();
+                    flush_table(&config);
+                    config = spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref())?;
+                }
+            _ => {}}
+            }
+            _ = tokio::signal::ctrl_c() => {
+                info!("received shutdown signal");
+                return Ok(());
+            },
+        }
+    }
+}
+
+fn spawn_blocklist_loop<'a>(
+    cli: &Cli,
+    status: Arc<ServiceStatusStruct>,
+    cancellation_token: CancellationToken,
+    blocklist_split_string: Option<&str>,
+) -> Result<NftConfig<'a>, AppError> {
+    let retry_interval = env::var("NFTBLOCKD_RETRY_INTERVAL")
+        .unwrap_or("2".to_string())
+        .parse::<u64>()?;
+
+    let retry_count = env::var("NFTBLOCKD_RETRY_COUNT")
+        .unwrap_or("10".to_string())
+        .parse::<u64>()?;
+    let blocklist = BlockList::new(
+        cli.url.url4.clone(),
+        cli.url.url6.clone(),
+        blocklist_split_string,
+    )?;
+    let refresh_interval = cli.interval;
+    let config = NftConfig::new(blocklist_split_string)?;
+    let config_local = config.clone();
+    tokio::spawn(async move {
+        blocklist_loop(
+            status,
+            blocklist,
+            config_local,
+            refresh_interval,
+            retry_count,
+            retry_interval,
+            cancellation_token,
+        )
+        .await;
+    });
+    Ok(config)
 }
 
 async fn blocklist_loop(
-    cli: &Cli,
-    stats: Arc<RwLock<Stats>>,
+    status: Arc<ServiceStatusStruct>,
     blocklist: BlockList,
-    config: &NftConfig<'_>,
+    config: NftConfig<'_>,
+    refresh_interval: u64,
     retry_count: u64,
     retry_interval: u64,
+    cancellation_token: CancellationToken,
 ) {
     let mut counter = 1;
     loop {
         info!("starting updating nftables blocklist");
-        match blocklist.update(&config, stats.clone()).await {
+        match blocklist.update(&config, status.stats.clone()).await {
             Ok(()) => {
                 info!("finished updating nftables blocklist");
+                *status.status.write().await = NftblockdStatus::Ok;
                 counter = 1;
             }
             Err(e) => {
                 error!("{e}");
+                if !matches!(*status.status.read().await, NftblockdStatus::Failed(_)) {
+                    *status.status.write().await = NftblockdStatus::PreFail(e.clone());
+                }
+
                 let ms = retry_interval * 1000;
                 let sleep_interval = rand::rng().random_range(ms / 2..ms * 2);
                 tokio::time::sleep(Duration::from_millis(sleep_interval)).await;
@@ -220,34 +227,49 @@ async fn blocklist_loop(
                     "paused for {sleep_interval} ms; retrying; attempt {counter} out of {retry_count}"
                 );
                 if counter >= retry_count {
-                    error!("failed to update nftables blocklist after {retry_count} retries");
-                    exit(3);
+                    let err = AppError::NftblockdError(format!(
+                        "failed to update nftables blocklist after {retry_count} retries; reason: {e}; FLUSHING TABLE!"
+                    ));
+                    error!("{err}");
+                    *status.status.write().await = NftblockdStatus::Failed(err);
+                    counter = 1;
+                    flush_table(&config);
                 }
                 counter += 1;
                 continue;
             }
         }
-
-        tokio::time::sleep(Duration::from_secs(cli.interval)).await;
+        tokio::select! {
+            () = tokio::time::sleep(Duration::from_secs(refresh_interval)) => {}
+            () = cancellation_token.cancelled() => {
+                info!("stopping blocklist loop");
+                return;
+            }
+        }
     }
 }
 
 async fn bind_socket(path: &str) -> Result<UnixListenerStream, AppError> {
     if Path::new(path).exists() {
-        match UnixStream::connect(path).await {
-            Ok(_) => {
-                return Err(AppError::NftblockdError(
-                    "nftblockd is already running".into(),
-                ));
-            }
-            Err(_) => {
-                info!("Removing stale socket: {path}");
-                std::fs::remove_file(path)?;
-            }
+        if UnixStream::connect(path).await.is_ok() {
+            return Err(AppError::NftblockdError(
+                "nftblockd is already running".into(),
+            ));
         }
+        info!("Removing stale socket: {path}");
+        std::fs::remove_file(path)?;
     }
 
     let uds = UnixListener::bind(path)?;
 
     Ok(UnixListenerStream::new(uds))
+}
+
+fn flush_table(config: &NftConfig<'_>) {
+    let _ = config.delete_table_and_apply().map_err(|e| {
+        warn!(
+            "the `{}` table (probably) already deleted: {}",
+            config.table_name, e
+        );
+    });
 }

@@ -12,16 +12,20 @@ use tonic::Response;
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-    #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
-    pub json: bool,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
     Reload,
     Flush,
-    Status,
-    Stats,
+    Status {
+        #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
+        json: bool,
+    },
+    Stats {
+        #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
+        json: bool,
+    },
 }
 
 #[tokio::main]
@@ -30,17 +34,25 @@ async fn main() -> Result<(), AppError> {
     let mut client = StatusServiceClient::connect("unix:///run/nftblockd.sock").await?;
 
     match cli.command {
-        Commands::Reload => todo!(),
-        Commands::Flush => todo!(),
-        Commands::Status => {
-            let request = tonic::Request::new({});
-            let response = client.get_status(request).await?;
-            print_response(response, cli.json)?;
+        Commands::Reload => {
+            let request = tonic::Request::new(());
+            let response = client.reload_table(request).await?;
+            print_response(response, false)?;
         }
-        Commands::Stats => {
-            let request = tonic::Request::new({});
+        Commands::Flush => {
+            let request = tonic::Request::new(());
+            let response = client.flush_table(request).await?;
+            print_response(response, false)?;
+        }
+        Commands::Status { json } => {
+            let request = tonic::Request::new(());
+            let response = client.get_status(request).await?;
+            print_response(response, json)?;
+        }
+        Commands::Stats { json } => {
+            let request = tonic::Request::new(());
             let response = client.get_drop_stats(request).await?;
-            print_response(response, cli.json)?;
+            print_response(response, json)?;
         }
     }
 

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::grpc::ctl::nftblockd::StatusSummary;
+use crate::utils::status::NftblockdStatus;
 use crate::{
     grpc::ctl::nftblockd::{Stats, status_service_server::StatusService},
     utils::stats::Stats as StatsInfo,
@@ -9,36 +10,42 @@ use crate::{
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 
+pub enum Command {
+    Flush,
+    Reload,
+}
+
 pub struct ServiceStatusStruct {
+    pub status: Arc<RwLock<NftblockdStatus>>,
     pub stats: Arc<RwLock<StatsInfo>>,
+    pub command_channel: tokio::sync::mpsc::Sender<Command>,
 }
 
 #[tonic::async_trait]
 impl StatusService for ServiceStatusStruct {
-    async fn get_status(&self, request: Request<()>) -> Result<Response<StatusSummary>, Status> {
-        let reply = StatusSummary {
-            is_ok: true,
-            status: format!("Hello!"),
-        };
+    async fn get_status(&self, _request: Request<()>) -> Result<Response<StatusSummary>, Status> {
+        let status = StatusSummary::from(self.status.read().await.clone());
+        Ok(Response::new(status))
+    }
+
+    async fn get_drop_stats(&self, _request: Request<()>) -> Result<Response<Stats>, Status> {
+        let reply = Stats::from(self.stats.read().await.clone());
         Ok(Response::new(reply))
     }
 
-    async fn get_drop_stats(&self, request: Request<()>) -> Result<Response<Stats>, Status> {
-        let reply = Stats::from(self.stats.read().await);
-        Ok(Response::new(reply.into()))
-    }
-
-    async fn reload_table(&self, request: Request<()>) -> Result<Response<StatusSummary>, Status> {
+    async fn reload_table(&self, _request: Request<()>) -> Result<Response<StatusSummary>, Status> {
+        self.command_channel.send(Command::Reload).await.ok();
         Ok(Response::new(StatusSummary {
             is_ok: true,
-            status: format!("Table reloaded"),
+            status: "Table reloaded".to_string(),
         }))
     }
 
-    async fn flush_table(&self, request: Request<()>) -> Result<Response<StatusSummary>, Status> {
+    async fn flush_table(&self, _request: Request<()>) -> Result<Response<StatusSummary>, Status> {
+        self.command_channel.send(Command::Flush).await.ok();
         Ok(Response::new(StatusSummary {
             is_ok: true,
-            status: format!("Table flushed"),
+            status: "Table flushed".to_string(),
         }))
     }
 }

@@ -20,17 +20,12 @@ pub enum RuleDirection {
 }
 
 /// Represents the protocol type (IPv4 or IPv6) for a rule.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum RuleProto {
     Ip,
     Ip6,
+    #[default]
     Other,
-}
-
-impl Default for RuleProto {
-    fn default() -> Self {
-        Self::Other
-    }
 }
 
 impl Display for RuleDirection {

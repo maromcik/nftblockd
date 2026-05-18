@@ -6,7 +6,7 @@ use thiserror::Error;
 /// Each variant of `AppError` corresponds to a specific error category
 /// and provides an appropriate error message.
 #[allow(clippy::enum_variant_names)]
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Clone, PartialEq, Eq)]
 pub enum AppError {
     #[error("request error: {0}")]
     RequestError(String),
@@ -28,6 +28,12 @@ pub enum AppError {
     IoError(String),
     #[error("nftblockd error: {0}")]
     NftblockdError(String),
+}
+
+impl Debug for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl From<ureq::Error> for AppError {
@@ -111,5 +117,17 @@ impl From<tonic::transport::Error> for AppError {
 impl From<tonic::Status> for AppError {
     fn from(value: tonic::Status) -> Self {
         AppError::GrpcError(value.to_string())
+    }
+}
+
+impl From<std::num::ParseIntError> for AppError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        AppError::ParseError(value.to_string())
+    }
+}
+
+impl From<reqwest::Error> for AppError {
+    fn from(value: reqwest::Error) -> Self {
+        AppError::RequestError(value.to_string())
     }
 }

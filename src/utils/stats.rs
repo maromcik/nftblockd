@@ -15,7 +15,7 @@ use crate::{
     nftables::builder::RuleProto,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Stats {
     pub combined: DropStats,
     pub drop_stats: ChainDropStats,
@@ -117,17 +117,23 @@ pub struct RuleInfo {
     pub bytes: usize,
 }
 
+#[allow(clippy::single_match)]
 impl From<&Rule<'_>> for RuleInfo {
     fn from(rule: &Rule<'_>) -> Self {
-        let mut rule_info = RuleInfo::default();
-        rule_info.table = rule.table.to_string();
-        rule_info.chain = rule.chain.to_string();
+        let mut rule_info = RuleInfo {
+            table: rule.table.to_string(),
+            chain: rule.chain.to_string(),
+            protocol: RuleProto::default(),
+            set_name: String::new(),
+            packets: 0,
+            bytes: 0,
+        };
 
         for expr in rule.expr.iter() {
             match expr {
                 Statement::Match(m) => {
                     match &m.right {
-                        nftables::expr::Expression::String(st) => {
+                        Expression::String(st) => {
                             rule_info.set_name = st.to_string();
                         }
                         _ => {}
@@ -148,22 +154,14 @@ impl From<&Rule<'_>> for RuleInfo {
                         _ => {}
                     }
                 }
-                Statement::Counter(counter) => match counter {
-                    nftables::stmt::Counter::Anonymous(anonymous_counter) => {
-                        match anonymous_counter {
-                            Some(c) => {
-                                if let Some(x) = c.bytes {
-                                    rule_info.bytes = x;
-                                }
-                                if let Some(x) = c.packets {
-                                    rule_info.packets = x;
-                                }
-                            }
-                            _ => {}
-                        }
+                Statement::Counter(nftables::stmt::Counter::Anonymous(Some(counter))) => {
+                    if let Some(x) = counter.bytes {
+                        rule_info.bytes = x;
                     }
-                    _ => {}
-                },
+                    if let Some(x) = counter.packets {
+                        rule_info.packets = x;
+                    }
+                }
                 _ => {}
             }
         }
@@ -202,15 +200,6 @@ impl From<Stats> for GrpcStats {
         GrpcStats {
             combined: Some(value.combined.into()),
             drop_stats: Some(value.drop_stats.into()),
-        }
-    }
-}
-
-impl From<tokio::sync::RwLockReadGuard<'_, Stats>> for GrpcStats {
-    fn from(value: tokio::sync::RwLockReadGuard<'_, Stats>) -> Self {
-        GrpcStats {
-            combined: Some(value.combined.clone().into()),
-            drop_stats: Some(value.drop_stats.clone().into()),
         }
     }
 }
