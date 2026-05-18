@@ -33,6 +33,7 @@ message Stats {
 }
 
 message StatusSummary {
-  bool is_ok = 1;
+  int32 status_code = 1;
   string status = 2;
+  string message = 3;
 }

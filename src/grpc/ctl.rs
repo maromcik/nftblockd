@@ -10,7 +10,7 @@ pub mod nftblockd {
 
 impl Display for StatusSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "is_ok={} status={}", self.is_ok, self.status)
+        write!(f, "status_code={} status={} message={}", self.status_code, self.status, self.message)
     }
 }
 

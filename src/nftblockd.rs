@@ -109,7 +109,6 @@ async fn main() -> Result<(), AppError> {
     }
 
     let mut channel = tokio::sync::mpsc::channel::<Command>(100);
-    let cancellation_token = CancellationToken::new();
 
     let status = Arc::new(ServiceStatusStruct {
         status: Arc::new(RwLock::new(NftblockdStatus::default())),
@@ -135,6 +134,7 @@ async fn main() -> Result<(), AppError> {
 
     info!("initialized");
 
+    let mut cancellation_token = CancellationToken::new();
     config = spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref())?;
 
     loop {
@@ -149,6 +149,7 @@ async fn main() -> Result<(), AppError> {
                 Some(Command::Reload { respond_to }) => {
                     cancellation_token.cancel();
                     flush_table(&config);
+                    cancellation_token = CancellationToken::new();
                     match spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref()) {
                         Ok(_) => respond_to.send(Ok(())).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?,
                         Err(e) => respond_to.send(Err(e)).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?,

@@ -45,18 +45,9 @@ impl StatusService for ServiceStatusStruct {
             .await
             .ok();
         match chan.1.await {
-            Ok(Ok(())) => Ok(Response::new(StatusSummary {
-                is_ok: true,
-                status: "Table reloaded".to_string(),
-            })),
-            Ok(Err(e)) => Ok(Response::new(StatusSummary {
-                is_ok: false,
-                status: e.to_string(),
-            })),
-            Err(e) => Ok(Response::new(StatusSummary {
-                is_ok: false,
-                status: e.to_string(),
-            })),
+            Ok(Ok(())) => Ok(Response::new(StatusSummary::new_ok("table reloaded"))),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
+            Err(e) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
         }
     }
 
@@ -68,18 +59,9 @@ impl StatusService for ServiceStatusStruct {
             .ok();
 
         match chan.1.await {
-            Ok(Ok(())) => Ok(Response::new(StatusSummary {
-                is_ok: true,
-                status: "Table flushed".to_string(),
-            })),
-            Ok(Err(e)) => Ok(Response::new(StatusSummary {
-                is_ok: false,
-                status: e.to_string(),
-            })),
-            Err(e) => Ok(Response::new(StatusSummary {
-                is_ok: false,
-                status: e.to_string(),
-            })),
+            Ok(Ok(())) => Ok(Response::new(StatusSummary::new_ok("table flushed"))),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
+            Err(e) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
         }
     }
 }
