@@ -35,7 +35,7 @@ build:
   stage: build
   before_script:
     # Install musl development tools for cross-compilation
-    - apt-get update && apt-get install -y musl-tools musl-dev
+    - apt-get update && apt-get install -y musl-tools musl-dev protobuf-compiler
     - rustup default stable
     - rustup target add x86_64-unknown-linux-musl
   script:
