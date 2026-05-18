@@ -238,7 +238,7 @@ async fn blocklist_loop(
                 tokio::select! {
                     () = tokio::time::sleep(Duration::from_millis(sleep_interval)) => {}
                     () = cancellation_token.cancelled() => {
-                        info!("stopping blocklist loop");
+                        info!("stopping blocklist retry loop");
                         return;
                     }
                 }
