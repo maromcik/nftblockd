@@ -46,6 +46,7 @@ build:
   artifacts:
     paths:
       - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}
+      - target/x86_64-unknown-linux-musl/release/${CI_PROJECT_NAME}ctl
     expire_in: 1 week
 
 publish:
