@@ -36,3 +36,6 @@ tokio-util = "0.7.18"
 [build-dependencies]
 tonic-build = "0.14.6"
 tonic-prost-build = "*"
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1.43"

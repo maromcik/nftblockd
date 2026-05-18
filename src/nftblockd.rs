@@ -19,6 +19,10 @@ use tonic::codegen::tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 /// Group of URLs provided for IPv4 and IPv6 blocklist fetching.
 /// These URLs can be passed via CLI arguments or environment variables.
 #[derive(Debug, clap::Args)]

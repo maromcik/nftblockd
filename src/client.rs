@@ -7,6 +7,10 @@ use nftblockd::{
 use clap::{Parser, Subcommand};
 use tonic::Response;
 
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
