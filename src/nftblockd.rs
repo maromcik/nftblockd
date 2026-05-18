@@ -148,7 +148,6 @@ async fn main() -> Result<(), AppError> {
                 }
                 Some(Command::Reload { respond_to }) => {
                     cancellation_token.cancel();
-                    flush_table(&config);
                     cancellation_token = CancellationToken::new();
                     match spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref()) {
                         Ok(_) => respond_to.send(Ok(())).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?,
@@ -213,7 +212,7 @@ async fn blocklist_loop(
     let mut counter = 1;
     loop {
         info!("starting updating nftables blocklist");
-        match blocklist.update(&config, status.stats.clone()).await {
+        match blocklist.update(&config, status.clone()).await {
             Ok(()) => {
                 info!("finished updating nftables blocklist");
                 *status.status.write().await = NftblockdStatus::Ok;

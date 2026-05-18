@@ -1,14 +1,14 @@
 use crate::error::AppError;
 use crate::nftables::builder::SetElements;
 use crate::nftables::config::NftConfig;
-use crate::utils::stats::Stats;
 use crate::utils::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
+use crate::grpc::server::ServiceStatusStruct;
+use crate::utils::status::NftblockdStatus;
 
 #[derive(Clone)]
 pub struct BlockList {
@@ -176,10 +176,12 @@ impl BlockList {
     pub async fn update(
         &self,
         config: &NftConfig<'_>,
-        stats: Arc<RwLock<Stats>>,
+        status: Arc<ServiceStatusStruct>,
     ) -> Result<(), AppError> {
-        config.generate_stats(stats).await?;
-
+        config.generate_stats(status.stats.clone()).await?;
+        if matches!(*status.status.read().await, NftblockdStatus::Ok) {
+            *status.status.write().await = NftblockdStatus::Pending;
+        }
         let ipv4 = self.update_ipv4().await?;
         let ipv6 = self.update_ipv6().await?;
 

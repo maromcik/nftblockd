@@ -28,6 +28,13 @@ impl NftblockdStatus {
             NftblockdStatus::PreFail(_) => "pre-fail".to_string(),
         }
     }
+
+    pub fn get_message(&self) -> String {
+        match self {
+            NftblockdStatus::Ok | NftblockdStatus::Pending => String::default(),
+            NftblockdStatus::Failed(e) | NftblockdStatus::PreFail(e) => e.to_string(),
+        }
+    }
 }
 
 impl Display for NftblockdStatus {
@@ -41,13 +48,12 @@ impl Display for NftblockdStatus {
     }
 }
 
-
 impl From<NftblockdStatus> for StatusSummary {
     fn from(status: NftblockdStatus) -> Self {
         StatusSummary {
             status_code: status.get_status_code(),
             status: status.get_status(),
-            message: status.to_string()
+            message: status.get_message(),
         }
     }
 }
@@ -57,7 +63,7 @@ impl StatusSummary {
         StatusSummary {
             status_code: 0,
             status: "ok".to_string(),
-            message: message.to_string()
+            message: message.to_string(),
         }
     }
 
@@ -65,7 +71,7 @@ impl StatusSummary {
         StatusSummary {
             status_code: 3,
             status: "failed".to_string(),
-            message: message.to_string()
+            message: message.to_string(),
         }
     }
 }
