@@ -16,8 +16,14 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    Reload,
-    Flush,
+    Reload {
+        #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
+        json: bool,
+    },
+    Flush {
+        #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
+        json: bool,
+    },
     Status {
         #[arg(short = 'j', long = "json", action = clap::ArgAction::SetTrue)]
         json: bool,
@@ -34,15 +40,15 @@ async fn main() -> Result<(), AppError> {
     let mut client = StatusServiceClient::connect("unix:///run/nftblockd.sock").await?;
 
     match cli.command {
-        Commands::Reload => {
+        Commands::Reload { json } => {
             let request = tonic::Request::new(());
             let response = client.reload_table(request).await?;
-            print_response(response, false)?;
+            print_response(response, json)?;
         }
-        Commands::Flush => {
+        Commands::Flush { json } => {
             let request = tonic::Request::new(());
             let response = client.flush_table(request).await?;
-            print_response(response, false)?;
+            print_response(response, json)?;
         }
         Commands::Status { json } => {
             let request = tonic::Request::new(());

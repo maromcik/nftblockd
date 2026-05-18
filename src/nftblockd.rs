@@ -141,14 +141,18 @@ async fn main() -> Result<(), AppError> {
         tokio::select! {
             cmd = channel.1.recv() => {
             match cmd {
-                Some(Command::Flush) => {
+                Some(Command::Flush { respond_to }) => {
                     cancellation_token.cancel();
                     flush_table(&config);
+                    respond_to.send(Ok(())).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?;
                 }
-                Some(Command::Reload) => {
+                Some(Command::Reload { respond_to }) => {
                     cancellation_token.cancel();
                     flush_table(&config);
-                    config = spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref())?;
+                    match spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref()) {
+                        Ok(_) => respond_to.send(Ok(())).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?,
+                        Err(e) => respond_to.send(Err(e)).map_err(|_| AppError::NftblockdError("failed to send response to a gRPC client".to_string()))?,
+                    }
                 }
             _ => {}}
             }

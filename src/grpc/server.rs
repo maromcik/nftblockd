@@ -7,12 +7,17 @@ use crate::{
     utils::stats::Stats as StatsInfo,
 };
 
+use crate::error::AppError;
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 
 pub enum Command {
-    Flush,
-    Reload,
+    Flush {
+        respond_to: tokio::sync::oneshot::Sender<Result<(), AppError>>,
+    },
+    Reload {
+        respond_to: tokio::sync::oneshot::Sender<Result<(), AppError>>,
+    },
 }
 
 pub struct ServiceStatusStruct {
@@ -34,18 +39,47 @@ impl StatusService for ServiceStatusStruct {
     }
 
     async fn reload_table(&self, _request: Request<()>) -> Result<Response<StatusSummary>, Status> {
-        self.command_channel.send(Command::Reload).await.ok();
-        Ok(Response::new(StatusSummary {
-            is_ok: true,
-            status: "Table reloaded".to_string(),
-        }))
+        let chan = tokio::sync::oneshot::channel();
+        self.command_channel
+            .send(Command::Reload { respond_to: chan.0 })
+            .await
+            .ok();
+        match chan.1.await {
+            Ok(Ok(())) => Ok(Response::new(StatusSummary {
+                is_ok: true,
+                status: "Table reloaded".to_string(),
+            })),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary {
+                is_ok: false,
+                status: e.to_string(),
+            })),
+            Err(e) => Ok(Response::new(StatusSummary {
+                is_ok: false,
+                status: e.to_string(),
+            })),
+        }
     }
 
     async fn flush_table(&self, _request: Request<()>) -> Result<Response<StatusSummary>, Status> {
-        self.command_channel.send(Command::Flush).await.ok();
-        Ok(Response::new(StatusSummary {
-            is_ok: true,
-            status: "Table flushed".to_string(),
-        }))
+        let chan = tokio::sync::oneshot::channel();
+        self.command_channel
+            .send(Command::Flush { respond_to: chan.0 })
+            .await
+            .ok();
+
+        match chan.1.await {
+            Ok(Ok(())) => Ok(Response::new(StatusSummary {
+                is_ok: true,
+                status: "Table flushed".to_string(),
+            })),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary {
+                is_ok: false,
+                status: e.to_string(),
+            })),
+            Err(e) => Ok(Response::new(StatusSummary {
+                is_ok: false,
+                status: e.to_string(),
+            })),
+        }
     }
 }
