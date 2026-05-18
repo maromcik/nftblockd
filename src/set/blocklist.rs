@@ -2,13 +2,16 @@ use crate::error::AppError;
 use crate::grpc::server::ServiceStatusStruct;
 use crate::nftables::builder::SetElements;
 use crate::nftables::config::NftConfig;
+use crate::nftables::flush_table;
 use crate::utils::status::NftblockdStatus;
 use crate::utils::subnet::{SubnetList, parse_from_string};
-use log::{info, warn};
+use log::{error, info, warn};
+use rand::RngExt;
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Clone)]
 pub struct BlockList {
@@ -188,5 +191,64 @@ impl BlockList {
         config.apply_nft(&ipv4, &ipv6)?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
+    }
+}
+
+pub async fn blocklist_loop(
+    status: Arc<ServiceStatusStruct>,
+    blocklist: BlockList,
+    config: NftConfig<'_>,
+    refresh_interval: u64,
+    retry_count: u64,
+    retry_interval: u64,
+    cancellation_token: CancellationToken,
+) {
+    let mut counter = 1;
+    loop {
+        info!("starting updating nftables blocklist");
+        match blocklist.update(&config, status.clone()).await {
+            Ok(()) => {
+                info!("finished updating nftables blocklist");
+                *status.status.write().await = NftblockdStatus::Ok;
+                counter = 1;
+            }
+            Err(e) => {
+                error!("{e}");
+                if !matches!(*status.status.read().await, NftblockdStatus::Failed(_)) {
+                    *status.status.write().await = NftblockdStatus::PreFail(e.clone());
+                }
+
+                let ms = retry_interval * 1000;
+                let sleep_interval = rand::rng().random_range(ms / 2..ms * 2);
+                tokio::select! {
+                    () = tokio::time::sleep(Duration::from_millis(sleep_interval)) => {}
+                    () = cancellation_token.cancelled() => {
+                        info!("stopping blocklist retry loop");
+                        return;
+                    }
+                }
+                warn!(
+                    "paused for {sleep_interval} ms; retrying; attempt {counter} out of {retry_count}"
+                );
+                if counter >= retry_count {
+                    let err = AppError::NftblockdError(format!(
+                        "failed to update nftables blocklist after {retry_count} retries; reason: {e}; FLUSHING TABLE!"
+                    ));
+                    error!("{err}");
+                    *status.status.write().await = NftblockdStatus::Failed(err);
+                    counter = 1;
+                    flush_table(&config);
+                }
+                counter += 1;
+                continue;
+            }
+        }
+        tokio::select! {
+            () = tokio::time::sleep(Duration::from_secs(refresh_interval)) => {}
+            () = cancellation_token.cancelled() => {
+                info!("stopping blocklist loop");
+                return;
+            }
+        }
     }
 }

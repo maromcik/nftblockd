@@ -1050,7 +1050,7 @@ dependencies = [
 
 [[package]]
 name = "nftblockd"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "clap",
  "dotenvy",

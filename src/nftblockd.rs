@@ -4,15 +4,15 @@ use nftblockd::error::AppError;
 use nftblockd::grpc::ctl::nftblockd::status_service_server::StatusServiceServer;
 use nftblockd::grpc::server::{Command, ServiceStatusStruct};
 use nftblockd::nftables::config::NftConfig;
-use nftblockd::set::blocklist::BlockList;
+use nftblockd::nftables::flush_table;
+use nftblockd::set::blocklist::{BlockList, blocklist_loop};
 use nftblockd::utils::stats::Stats;
 use nftblockd::utils::status::NftblockdStatus;
-use rand::RngExt;
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::{UnixListener, UnixStream};
+use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tonic::codegen::tokio_stream::wrappers::UnixListenerStream;
@@ -145,7 +145,8 @@ async fn main() -> Result<(), AppError> {
         cancellation_token.clone(),
         blocklist_split_string.as_deref(),
     )?;
-
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
     loop {
         tokio::select! {
             cmd = channel.1.recv() => {
@@ -165,12 +166,32 @@ async fn main() -> Result<(), AppError> {
                 }
             _ => {}}
             }
-            _ = tokio::signal::ctrl_c() => {
-                info!("received shutdown signal");
+            _ = sigterm.recv() => {
+                info!("received SIGTERM, shutting down");
+                return Ok(());
+            },
+            _ = sigint.recv() => {
+                info!("received SIGINT, shutting down");
                 return Ok(());
             },
         }
     }
+}
+
+async fn bind_socket(path: &str) -> Result<UnixListenerStream, AppError> {
+    if Path::new(path).exists() {
+        if UnixStream::connect(path).await.is_ok() {
+            return Err(AppError::NftblockdError(
+                "nftblockd is already running".into(),
+            ));
+        }
+        info!("Removing stale socket: {path}");
+        std::fs::remove_file(path)?;
+    }
+
+    let uds = UnixListener::bind(path)?;
+
+    Ok(UnixListenerStream::new(uds))
 }
 
 fn spawn_blocklist_loop<'a>(
@@ -207,88 +228,4 @@ fn spawn_blocklist_loop<'a>(
         .await;
     });
     Ok(config)
-}
-
-async fn blocklist_loop(
-    status: Arc<ServiceStatusStruct>,
-    blocklist: BlockList,
-    config: NftConfig<'_>,
-    refresh_interval: u64,
-    retry_count: u64,
-    retry_interval: u64,
-    cancellation_token: CancellationToken,
-) {
-    let mut counter = 1;
-    loop {
-        info!("starting updating nftables blocklist");
-        match blocklist.update(&config, status.clone()).await {
-            Ok(()) => {
-                info!("finished updating nftables blocklist");
-                *status.status.write().await = NftblockdStatus::Ok;
-                counter = 1;
-            }
-            Err(e) => {
-                error!("{e}");
-                if !matches!(*status.status.read().await, NftblockdStatus::Failed(_)) {
-                    *status.status.write().await = NftblockdStatus::PreFail(e.clone());
-                }
-
-                let ms = retry_interval * 1000;
-                let sleep_interval = rand::rng().random_range(ms / 2..ms * 2);
-                tokio::select! {
-                    () = tokio::time::sleep(Duration::from_millis(sleep_interval)) => {}
-                    () = cancellation_token.cancelled() => {
-                        info!("stopping blocklist retry loop");
-                        return;
-                    }
-                }
-                warn!(
-                    "paused for {sleep_interval} ms; retrying; attempt {counter} out of {retry_count}"
-                );
-                if counter >= retry_count {
-                    let err = AppError::NftblockdError(format!(
-                        "failed to update nftables blocklist after {retry_count} retries; reason: {e}; FLUSHING TABLE!"
-                    ));
-                    error!("{err}");
-                    *status.status.write().await = NftblockdStatus::Failed(err);
-                    counter = 1;
-                    flush_table(&config);
-                }
-                counter += 1;
-                continue;
-            }
-        }
-        tokio::select! {
-            () = tokio::time::sleep(Duration::from_secs(refresh_interval)) => {}
-            () = cancellation_token.cancelled() => {
-                info!("stopping blocklist loop");
-                return;
-            }
-        }
-    }
-}
-
-async fn bind_socket(path: &str) -> Result<UnixListenerStream, AppError> {
-    if Path::new(path).exists() {
-        if UnixStream::connect(path).await.is_ok() {
-            return Err(AppError::NftblockdError(
-                "nftblockd is already running".into(),
-            ));
-        }
-        info!("Removing stale socket: {path}");
-        std::fs::remove_file(path)?;
-    }
-
-    let uds = UnixListener::bind(path)?;
-
-    Ok(UnixListenerStream::new(uds))
-}
-
-fn flush_table(config: &NftConfig<'_>) {
-    let _ = config.delete_table_and_apply().map_err(|e| {
-        warn!(
-            "the `{}` table (probably) already deleted: {}",
-            config.table_name, e
-        );
-    });
 }
