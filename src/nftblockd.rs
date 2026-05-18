@@ -139,7 +139,12 @@ async fn main() -> Result<(), AppError> {
     info!("initialized");
 
     let mut cancellation_token = CancellationToken::new();
-    config = spawn_blocklist_loop(&cli, status.clone(), cancellation_token.clone(), blocklist_split_string.as_deref())?;
+    config = spawn_blocklist_loop(
+        &cli,
+        status.clone(),
+        cancellation_token.clone(),
+        blocklist_split_string.as_deref(),
+    )?;
 
     loop {
         tokio::select! {

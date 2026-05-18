@@ -46,8 +46,12 @@ impl StatusService for ServiceStatusStruct {
             .ok();
         match chan.1.await {
             Ok(Ok(())) => Ok(Response::new(StatusSummary::new_ok("table reloaded"))),
-            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
-            Err(e) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(
+                e.to_string().as_str(),
+            ))),
+            Err(e) => Ok(Response::new(StatusSummary::new_failed(
+                e.to_string().as_str(),
+            ))),
         }
     }
 
@@ -60,8 +64,12 @@ impl StatusService for ServiceStatusStruct {
 
         match chan.1.await {
             Ok(Ok(())) => Ok(Response::new(StatusSummary::new_ok("table flushed"))),
-            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
-            Err(e) => Ok(Response::new(StatusSummary::new_failed(e.to_string().as_str()))),
+            Ok(Err(e)) => Ok(Response::new(StatusSummary::new_failed(
+                e.to_string().as_str(),
+            ))),
+            Err(e) => Ok(Response::new(StatusSummary::new_failed(
+                e.to_string().as_str(),
+            ))),
         }
     }
 }
