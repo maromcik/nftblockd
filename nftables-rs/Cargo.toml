@@ -1,0 +1,43 @@
+[package]
+name = "nftables"
+version = "0.6.3"
+authors = ["Jasper Wiegratz <wiegratz@uni-bremen.de>", "Jan Romann <jan.romann@uni-bremen.de>"]
+edition = "2021"
+rust-version = "1.76"
+description = "Safe abstraction for nftables JSON API. It can be used to create nftables rulesets in Rust and parse existing nftables rulesets from JSON."
+repository = "https://github.com/nftables-rs/nftables-rs"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["nftables", "netfilter", "firewall"]
+categories = ["os", "network-programming"]
+exclude = [
+    ".devcontainer/*",
+    ".github/*",
+    "cliff.toml",
+    "release-plz.toml",
+]
+
+[dependencies]
+async-process = { version = "2.5.0", optional = true }
+futures-lite = { version = "2.6.1", optional = true }
+schemars = "1.2.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.149" }
+serde_path_to_error = "0.1"
+strum = "0.27.2"
+strum_macros = "0.27.2"
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", optional = true, features = ["process", "io-util"] }
+
+[dev-dependencies]
+datatest-stable = "0.3.3"
+serial_test = "3.3.1"
+tempfile = "3.25.0"
+
+[[test]]
+name = "deserialize"
+harness = false
+
+[features]
+tokio = ["dep:tokio"]
+async-process = ["dep:async-process", "dep:futures-lite"]
