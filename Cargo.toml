@@ -3,6 +3,14 @@ name = "nftblockd"
 version = "1.6.7"
 edition = "2024"
 
+[[bin]]
+name = 'nftblockd'
+path = 'src/nftblockd.rs'
+
+[[bin]]
+name = 'nftblockdctl'
+path = 'src/ctl.rs'
+
 [dependencies]
 clap = { version = "4.5.60", features = ["derive", "env"] }
 ureq = "3.2.0"
@@ -15,3 +23,14 @@ dotenvy = "0.15.7"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time"] }
 rand = "0.10.0"
+tokio = { version = "1.52.3", features = ["full"] }
+tonic = "0.14.6"
+tonic-prost = "*"
+prost = "0.14.3"
+time = "0.3.47"
+prost-types = "0.14.3"
+serde = "1.0.228"
+
+[build-dependencies]
+tonic-build = "0.14.6"
+tonic-prost-build = "*"

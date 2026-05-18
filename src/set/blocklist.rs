@@ -5,7 +5,9 @@ use crate::utils::stats::Stats;
 use crate::utils::subnet::{SubnetList, parse_from_string};
 use log::{info, warn};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::RwLock;
 
 pub struct BlockList {
     pub headers: Option<HashMap<String, String>>,
@@ -173,11 +175,15 @@ impl BlockList {
     /// Returns a `Result` indicating success (`Ok(())`) or an `AppError` if any part of the process fails.
     /// # Errors
     /// Will return `AppError` when updating nftables fails
-    pub fn update(&self, config: &NftConfig, stats: &mut Stats) -> Result<(), AppError> {
+    pub async fn update(
+        &self,
+        config: &NftConfig<'_>,
+        stats: Arc<RwLock<Stats>>,
+    ) -> Result<(), AppError> {
         let ipv4 = self.update_ipv4()?;
         let ipv6 = self.update_ipv6()?;
 
-        config.apply_nft(&ipv4, &ipv6, stats)?;
+        config.apply_nft(&ipv4, &ipv6, stats).await?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
     }

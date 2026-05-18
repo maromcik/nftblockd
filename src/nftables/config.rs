@@ -2,16 +2,20 @@ use crate::error::AppError;
 use crate::nftables::builder::{NftRulesetBuilder, RuleDirection, RuleProto, SetElements};
 use crate::set::custom_set::CustomSet;
 use crate::utils::read_ip_set_file;
-use crate::utils::stats::Stats;
+use crate::utils::stats::{ChainDropStats, RuleInfo, Stats};
 use crate::utils::subnet::parse_from_string;
 use log::error;
+use nftables::expr::{Expression, NamedExpression, Payload, PayloadBase, PayloadField};
 use nftables::helper;
-use nftables::schema::{Nftables, SetType};
+use nftables::schema::{Nftables, Rule, SetType};
 use nftables::stmt::Statement;
 use nftables::types::NfHook;
 use std::env;
 use std::os::linux::raw::stat;
-use tracing::{debug, info};
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use tokio::sync::RwLock;
+use tracing::{debug, info, trace};
 
 /// Defines the configuration structure for managing `nftables`.
 /// This includes tables, chains, sets, and rules used for blocking traffic.
@@ -324,71 +328,61 @@ impl<'a> NftConfig<'a> {
     /// - An error may occur if the `nftables` configuration is invalid or communication with
     ///   the `nftables` subsystem fails.
 
-    pub fn apply_nft(
+    pub async fn apply_nft(
         &self,
         ipv4_elements: &Option<SetElements<'a>>,
         ipv6_elements: &Option<SetElements<'a>>,
-        stats: &mut Stats,
+        stats: Arc<RwLock<Stats>>,
     ) -> Result<(), AppError> {
         let ruleset = self.generate_ruleset(ipv4_elements, ipv6_elements);
         debug!(
-            "ruleset: {}",
+            "Kernel ruleset: {}",
             serde_json::to_string_pretty(&ruleset)
                 .unwrap_or("Could not convert ruleset to JSON".to_string())
         );
-        for o in helper::get_current_ruleset()?.objects.iter() {
+
+        self.generate_stats(stats).await?;
+        helper::apply_ruleset(&ruleset)?;
+        Ok(())
+    }
+
+    async fn generate_stats(&self, stats: Arc<RwLock<Stats>>) -> Result<(), AppError> {
+        let ruleset = helper::get_current_ruleset()?;
+        debug!(
+            "RULESET: {}",
+            serde_json::to_string_pretty(&ruleset)
+                .unwrap_or("Could not convert ruleset to JSON".to_string())
+        );
+
+        for o in ruleset.objects.into_iter() {
             match o {
                 nftables::schema::NfObject::ListObject(nf_list_object) => match nf_list_object {
                     nftables::schema::NfListObject::Rule(rule) => {
-                        let mut rule_info = RuleInfo::default();
-                        for expr in rule.expr.iter() {
-                            match expr {
-                                Statement::Match(m) => match &m.right {
-                                    nftables::expr::Expression::String(st) => {
-                                        if st.starts_with(self.blocklist_set_name.as_str()) {
-                                            rule_info.set_name = st.to_string();
-                                        }
-                                    }
-                                    _ => {}
-                                },
-                                Statement::Counter(counter) => match counter {
-                                    nftables::stmt::Counter::Anonymous(anonymous_counter) => {
-                                        match anonymous_counter {
-                                            Some(c) => {
-                                                if let Some(x) = c.bytes {
-                                                    rule_info.bytes = x;
-                                                    error!("kokot: {x}");
-                                                }
-                                                if let Some(x) = c.packets {
-                                                    rule_info.packets = x;
-                                                    error!("pica: {x}");
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    _ => {}
-                                },
-                                _ => {}
-                            }
+                        let rule_info: RuleInfo = rule.into();
+                        if rule_info.table != self.table_name {
+                            trace!("Table check; skipping: {rule_info:?}");
+                            continue;
                         }
-                        stats.dropped_bytes += rule_info.bytes as u128;
-                        stats.dropped_packets += rule_info.packets as u128;
+
+                        if !rule_info
+                            .set_name
+                            .starts_with(format!("@{}", self.blocklist_set_name).as_str())
+                            && !rule_info.set_name.starts_with(
+                                format!("@{}", self.custom_blocklist_set.set_name).as_str(),
+                            )
+                        {
+                            trace!("Set check; skipping: {rule_info:?}");
+                            continue;
+                        }
+                        debug!("Adding rule stats: {rule_info:?}");
+                        let rule_stats = Stats::from(rule_info);
+                        stats.write().await.add(rule_stats);
                     }
                     _ => {}
                 },
                 _ => {}
             }
         }
-        error!("STATS: {stats:?}");
-        helper::apply_ruleset(&ruleset)?;
         Ok(())
     }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct RuleInfo {
-    pub set_name: String,
-    pub packets: usize,
-    pub bytes: usize,
 }

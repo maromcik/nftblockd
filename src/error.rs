@@ -22,6 +22,12 @@ pub enum AppError {
     TableNotFound(String),
     #[error("chain {0} must be defined first")]
     ChainNotFound(String),
+    #[error("grpc error: {0}")]
+    GrpcError(String),
+    #[error("io error: {0}")]
+    IoError(String),
+    #[error("nftblockd error: {0}")]
+    NftblockdError(String),
 }
 
 impl From<ureq::Error> for AppError {
@@ -40,7 +46,7 @@ impl From<std::io::Error> for AppError {
     /// # Returns
     /// A new `AppError` with the `FileError`  and the corresponding error message.
     fn from(value: std::io::Error) -> Self {
-        AppError::FileError(value.to_string())
+        AppError::IoError(value.to_string())
     }
 }
 
@@ -93,5 +99,17 @@ impl From<serde_json::Error> for AppError {
 impl From<std::ffi::NulError> for AppError {
     fn from(value: std::ffi::NulError) -> Self {
         AppError::ParseError(value.to_string())
+    }
+}
+
+impl From<tonic::transport::Error> for AppError {
+    fn from(value: tonic::transport::Error) -> Self {
+        AppError::GrpcError(value.to_string())
+    }
+}
+
+impl From<tonic::Status> for AppError {
+    fn from(value: tonic::Status) -> Self {
+        AppError::GrpcError(value.to_string())
     }
 }

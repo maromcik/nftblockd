@@ -20,11 +20,17 @@ pub enum RuleDirection {
 }
 
 /// Represents the protocol type (IPv4 or IPv6) for a rule.
+#[derive(Debug, Clone)]
 pub enum RuleProto {
-    /// IPv4 protocol.
     Ip,
-    /// IPv6 protocol.
     Ip6,
+    Other,
+}
+
+impl Default for RuleProto {
+    fn default() -> Self {
+        Self::Other
+    }
 }
 
 impl Display for RuleDirection {
@@ -47,6 +53,7 @@ impl Display for RuleProto {
         match self {
             RuleProto::Ip => write!(f, "ip"),
             RuleProto::Ip6 => write!(f, "ip6"),
+            RuleProto::Other => write!(f, "<other>"),
         }
     }
 }

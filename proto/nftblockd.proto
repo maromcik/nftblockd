@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package nftblockd;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service StatusService {
+  rpc GetStatus(google.protobuf.Empty) returns (StatusSummary);
+  rpc GetDropStats(google.protobuf.Empty) returns (Stats);
+  rpc ReloadTable(google.protobuf.Empty) returns (StatusSummary);
+  rpc FlushTable(google.protobuf.Empty) returns (StatusSummary);
+}
+
+message DropStats {
+  uint64 packets = 1;
+  uint64 bytes = 2;
+}
+
+message IpFamilyDropStats {
+  DropStats ipv4 = 2;
+  DropStats ipv6 = 3;
+}
+
+message ChainDropStats {;
+  IpFamilyDropStats prerouting = 2;
+  IpFamilyDropStats postrouting = 3;
+}
+
+message Stats {
+  ChainDropStats drop_stats = 1;
+  DropStats combined = 2;
+}
+
+message StatusSummary {
+  bool is_ok = 1;
+  string status = 2;
+}

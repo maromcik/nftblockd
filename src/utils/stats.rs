@@ -1,5 +1,216 @@
-#[derive(Default, Debug, Clone)]
+use std::ops::AddAssign;
+
+use nftables::{
+    expr::{Expression, NamedExpression, Payload, PayloadField},
+    schema::Rule,
+    stmt::Statement,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    grpc::ctl::nftblockd::{
+        ChainDropStats as GrpcChainDropStats, DropStats as GrpcDropStats,
+        IpFamilyDropStats as GrpcIpFamilyDropStats, Stats as GrpcStats,
+    },
+    nftables::builder::RuleProto,
+};
+
+#[derive(Debug, Default)]
 pub struct Stats {
-    pub dropped_packets: u128,
-    pub dropped_bytes: u128,
+    pub combined: DropStats,
+    pub drop_stats: ChainDropStats,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct DropStats {
+    pub packets: u64,
+    pub bytes: u64,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct IpFamilyDropStats {
+    pub ipv4: DropStats,
+    pub ipv6: DropStats,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ChainDropStats {
+    pub prerouting: IpFamilyDropStats,
+    pub postrouting: IpFamilyDropStats,
+}
+
+impl Stats {
+    pub fn add(&mut self, rhs: Self) {
+        *self += rhs;
+    }
+}
+
+impl AddAssign for DropStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.packets += rhs.packets;
+        self.bytes += rhs.bytes;
+    }
+}
+
+impl AddAssign for IpFamilyDropStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.ipv4 += rhs.ipv4;
+        self.ipv6 += rhs.ipv6;
+    }
+}
+
+impl AddAssign for ChainDropStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.prerouting += rhs.prerouting;
+        self.postrouting += rhs.postrouting;
+    }
+}
+
+impl AddAssign for Stats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.combined += rhs.combined;
+        self.drop_stats += rhs.drop_stats;
+    }
+}
+
+impl From<RuleInfo> for Stats {
+    fn from(rule_info: RuleInfo) -> Self {
+        let mut stats = Stats::default();
+        match rule_info.chain.as_str() {
+            "prerouting" => match rule_info.protocol {
+                RuleProto::Ip => {
+                    stats.drop_stats.prerouting.ipv4.bytes += rule_info.bytes as u64;
+                    stats.drop_stats.prerouting.ipv4.packets += rule_info.packets as u64;
+                }
+                RuleProto::Ip6 => {
+                    stats.drop_stats.prerouting.ipv6.bytes += rule_info.bytes as u64;
+                    stats.drop_stats.prerouting.ipv6.packets += rule_info.packets as u64;
+                }
+                RuleProto::Other => {}
+            },
+            "postrouting" => match rule_info.protocol {
+                RuleProto::Ip => {
+                    stats.drop_stats.postrouting.ipv4.bytes += rule_info.bytes as u64;
+                    stats.drop_stats.postrouting.ipv4.packets += rule_info.packets as u64;
+                }
+                RuleProto::Ip6 => {
+                    stats.drop_stats.postrouting.ipv6.bytes += rule_info.bytes as u64;
+                    stats.drop_stats.postrouting.ipv6.packets += rule_info.packets as u64;
+                }
+                RuleProto::Other => {}
+            },
+            _ => {}
+        }
+        stats.combined.bytes += rule_info.bytes as u64;
+        stats.combined.packets += rule_info.packets as u64;
+        stats
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RuleInfo {
+    pub table: String,
+    pub chain: String,
+    pub protocol: RuleProto,
+    pub set_name: String,
+    pub packets: usize,
+    pub bytes: usize,
+}
+
+impl From<&Rule<'_>> for RuleInfo {
+    fn from(rule: &Rule<'_>) -> Self {
+        let mut rule_info = RuleInfo::default();
+        rule_info.table = rule.table.to_string();
+        rule_info.chain = rule.chain.to_string();
+
+        for expr in rule.expr.iter() {
+            match expr {
+                Statement::Match(m) => {
+                    match &m.right {
+                        nftables::expr::Expression::String(st) => {
+                            rule_info.set_name = st.to_string();
+                        }
+                        _ => {}
+                    }
+                    match &m.left {
+                        Expression::Named(NamedExpression::Payload(Payload::PayloadField(
+                            PayloadField {
+                                protocol,
+                                field: _field,
+                            },
+                        ))) => {
+                            rule_info.protocol = match protocol.to_string().as_str() {
+                                "ip" => RuleProto::Ip,
+                                "ip6" => RuleProto::Ip6,
+                                _ => RuleProto::Other,
+                            };
+                        }
+                        _ => {}
+                    }
+                }
+                Statement::Counter(counter) => match counter {
+                    nftables::stmt::Counter::Anonymous(anonymous_counter) => {
+                        match anonymous_counter {
+                            Some(c) => {
+                                if let Some(x) = c.bytes {
+                                    rule_info.bytes = x;
+                                }
+                                if let Some(x) = c.packets {
+                                    rule_info.packets = x;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        rule_info
+    }
+}
+
+impl From<DropStats> for GrpcDropStats {
+    fn from(value: DropStats) -> Self {
+        GrpcDropStats {
+            packets: value.packets,
+            bytes: value.bytes,
+        }
+    }
+}
+impl From<IpFamilyDropStats> for GrpcIpFamilyDropStats {
+    fn from(value: IpFamilyDropStats) -> Self {
+        GrpcIpFamilyDropStats {
+            ipv4: Some(value.ipv4.into()),
+            ipv6: Some(value.ipv6.into()),
+        }
+    }
+}
+
+impl From<ChainDropStats> for GrpcChainDropStats {
+    fn from(value: ChainDropStats) -> Self {
+        GrpcChainDropStats {
+            prerouting: Some(value.prerouting.into()),
+            postrouting: Some(value.postrouting.into()),
+        }
+    }
+}
+
+impl From<Stats> for GrpcStats {
+    fn from(value: Stats) -> Self {
+        GrpcStats {
+            combined: Some(value.combined.into()),
+            drop_stats: Some(value.drop_stats.into()),
+        }
+    }
+}
+
+impl From<tokio::sync::RwLockReadGuard<'_, Stats>> for GrpcStats {
+    fn from(value: tokio::sync::RwLockReadGuard<'_, Stats>) -> Self {
+        GrpcStats {
+            combined: Some(value.combined.clone().into()),
+            drop_stats: Some(value.drop_stats.clone().into()),
+        }
+    }
 }
