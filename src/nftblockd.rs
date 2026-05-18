@@ -235,7 +235,13 @@ async fn blocklist_loop(
 
                 let ms = retry_interval * 1000;
                 let sleep_interval = rand::rng().random_range(ms / 2..ms * 2);
-                tokio::time::sleep(Duration::from_millis(sleep_interval)).await;
+                tokio::select! {
+                    () = tokio::time::sleep(Duration::from_millis(sleep_interval)) => {}
+                    () = cancellation_token.cancelled() => {
+                        info!("stopping blocklist loop");
+                        return;
+                    }
+                }
                 warn!(
                     "paused for {sleep_interval} ms; retrying; attempt {counter} out of {retry_count}"
                 );
