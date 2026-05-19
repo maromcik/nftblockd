@@ -17,7 +17,6 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct Stats {
-    pub combined: DropStats,
     pub drop_stats: ChainDropStats,
 }
 
@@ -29,12 +28,14 @@ pub struct DropStats {
 
 #[derive(Debug, Default, Clone)]
 pub struct IpFamilyDropStats {
+    pub combined: DropStats,
     pub ipv4: DropStats,
     pub ipv6: DropStats,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct ChainDropStats {
+    pub combined: DropStats,
     pub prerouting: IpFamilyDropStats,
     pub postrouting: IpFamilyDropStats,
 }
@@ -54,6 +55,7 @@ impl AddAssign for DropStats {
 
 impl AddAssign for IpFamilyDropStats {
     fn add_assign(&mut self, rhs: Self) {
+        self.combined += rhs.combined;
         self.ipv4 += rhs.ipv4;
         self.ipv6 += rhs.ipv6;
     }
@@ -61,6 +63,7 @@ impl AddAssign for IpFamilyDropStats {
 
 impl AddAssign for ChainDropStats {
     fn add_assign(&mut self, rhs: Self) {
+        self.combined += rhs.combined;
         self.prerouting += rhs.prerouting;
         self.postrouting += rhs.postrouting;
     }
@@ -68,7 +71,6 @@ impl AddAssign for ChainDropStats {
 
 impl AddAssign for Stats {
     fn add_assign(&mut self, rhs: Self) {
-        self.combined += rhs.combined;
         self.drop_stats += rhs.drop_stats;
     }
 }
@@ -77,32 +79,40 @@ impl From<RuleInfo> for Stats {
     fn from(rule_info: RuleInfo) -> Self {
         let mut stats = Stats::default();
         match rule_info.chain.as_str() {
-            "prerouting" => match rule_info.protocol {
-                RuleProto::Ip => {
-                    stats.drop_stats.prerouting.ipv4.bytes += rule_info.bytes as u64;
-                    stats.drop_stats.prerouting.ipv4.packets += rule_info.packets as u64;
+            "prerouting" => {
+                stats.drop_stats.prerouting.combined.bytes += rule_info.bytes as u64;
+                stats.drop_stats.prerouting.combined.packets += rule_info.packets as u64;
+                match rule_info.protocol {
+                    RuleProto::Ip => {
+                        stats.drop_stats.prerouting.ipv4.bytes += rule_info.bytes as u64;
+                        stats.drop_stats.prerouting.ipv4.packets += rule_info.packets as u64;
+                    }
+                    RuleProto::Ip6 => {
+                        stats.drop_stats.prerouting.ipv6.bytes += rule_info.bytes as u64;
+                        stats.drop_stats.prerouting.ipv6.packets += rule_info.packets as u64;
+                    }
+                    RuleProto::Other => {}
                 }
-                RuleProto::Ip6 => {
-                    stats.drop_stats.prerouting.ipv6.bytes += rule_info.bytes as u64;
-                    stats.drop_stats.prerouting.ipv6.packets += rule_info.packets as u64;
+            }
+            "postrouting" => {
+                stats.drop_stats.postrouting.combined.bytes += rule_info.bytes as u64;
+                stats.drop_stats.postrouting.combined.packets += rule_info.packets as u64;
+                match rule_info.protocol {
+                    RuleProto::Ip => {
+                        stats.drop_stats.postrouting.ipv4.bytes += rule_info.bytes as u64;
+                        stats.drop_stats.postrouting.ipv4.packets += rule_info.packets as u64;
+                    }
+                    RuleProto::Ip6 => {
+                        stats.drop_stats.postrouting.ipv6.bytes += rule_info.bytes as u64;
+                        stats.drop_stats.postrouting.ipv6.packets += rule_info.packets as u64;
+                    }
+                    RuleProto::Other => {}
                 }
-                RuleProto::Other => {}
-            },
-            "postrouting" => match rule_info.protocol {
-                RuleProto::Ip => {
-                    stats.drop_stats.postrouting.ipv4.bytes += rule_info.bytes as u64;
-                    stats.drop_stats.postrouting.ipv4.packets += rule_info.packets as u64;
-                }
-                RuleProto::Ip6 => {
-                    stats.drop_stats.postrouting.ipv6.bytes += rule_info.bytes as u64;
-                    stats.drop_stats.postrouting.ipv6.packets += rule_info.packets as u64;
-                }
-                RuleProto::Other => {}
-            },
+            }
             _ => {}
         }
-        stats.combined.bytes += rule_info.bytes as u64;
-        stats.combined.packets += rule_info.packets as u64;
+        stats.drop_stats.combined.bytes += rule_info.bytes as u64;
+        stats.drop_stats.combined.packets += rule_info.packets as u64;
         stats
     }
 }
@@ -180,6 +190,7 @@ impl From<DropStats> for GrpcDropStats {
 impl From<IpFamilyDropStats> for GrpcIpFamilyDropStats {
     fn from(value: IpFamilyDropStats) -> Self {
         GrpcIpFamilyDropStats {
+            combined: Some(value.combined.into()),
             ipv4: Some(value.ipv4.into()),
             ipv6: Some(value.ipv6.into()),
         }
@@ -189,6 +200,7 @@ impl From<IpFamilyDropStats> for GrpcIpFamilyDropStats {
 impl From<ChainDropStats> for GrpcChainDropStats {
     fn from(value: ChainDropStats) -> Self {
         GrpcChainDropStats {
+            combined: Some(value.combined.into()),
             prerouting: Some(value.prerouting.into()),
             postrouting: Some(value.postrouting.into()),
         }
@@ -198,7 +210,6 @@ impl From<ChainDropStats> for GrpcChainDropStats {
 impl From<Stats> for GrpcStats {
     fn from(value: Stats) -> Self {
         GrpcStats {
-            combined: Some(value.combined.into()),
             drop_stats: Some(value.drop_stats.into()),
         }
     }

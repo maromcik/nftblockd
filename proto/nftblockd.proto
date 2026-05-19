@@ -18,18 +18,19 @@ message DropStats {
 }
 
 message IpFamilyDropStats {
+  DropStats combined = 1;
   DropStats ipv4 = 2;
   DropStats ipv6 = 3;
 }
 
-message ChainDropStats {;
+message ChainDropStats {
+  DropStats combined = 1;
   IpFamilyDropStats prerouting = 2;
   IpFamilyDropStats postrouting = 3;
 }
 
 message Stats {
   ChainDropStats drop_stats = 1;
-  DropStats combined = 2;
 }
 
 message StatusSummary {

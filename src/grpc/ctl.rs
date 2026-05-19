@@ -20,12 +20,7 @@ impl Display for StatusSummary {
 
 impl Display for Stats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "===COMBINED===\n{}\n\n{}",
-            self.combined.unwrap_or_default(),
-            self.drop_stats.unwrap_or_default()
-        )
+        write!(f, "{}", self.drop_stats.unwrap_or_default())
     }
 }
 
@@ -39,7 +34,8 @@ impl Display for ChainDropStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "===PREROUTING===\n{}\n\n===POSTROUTING===\n{}",
+            "====COMBINED===\n{}\n\n===PREROUTING===\n{}\n\n===POSTROUTING===\n{}",
+            self.combined.unwrap_or_default(),
             self.prerouting.unwrap_or_default(),
             self.postrouting.unwrap_or_default()
         )
@@ -50,7 +46,8 @@ impl Display for IpFamilyDropStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "---IPv4---\n{}\n\n---IPv6---\n{}",
+            "---COMBINED---\n{}\n---IPv4---\n{}\n---IPv6---\n{}",
+            self.combined.unwrap_or_default(),
             self.ipv4.unwrap_or_default(),
             self.ipv6.unwrap_or_default()
         )
