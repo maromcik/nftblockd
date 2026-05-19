@@ -181,13 +181,18 @@ impl BlockList {
         config: &NftConfig<'_>,
         status: Arc<ServiceStatusStruct>,
     ) -> Result<(), AppError> {
+        info!("Generating stats");
         config.generate_stats(status.stats.clone()).await?;
+
         if matches!(*status.status.read().await, NftblockdStatus::Ok) {
             *status.status.write().await = NftblockdStatus::Pending;
         }
+
+        info!("Pulling and parsing blocklist");
         let ipv4 = self.update_ipv4().await?;
         let ipv6 = self.update_ipv6().await?;
 
+        info!("Applying nftables ruleset");
         config.apply_nft(&ipv4, &ipv6)?;
         info!("the `{}` table successfully loaded", config.table_name);
         Ok(())
