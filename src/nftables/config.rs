@@ -203,7 +203,7 @@ impl<'a> NftConfig<'a> {
                 ipv4_custom_blocklist_set_name.clone(),
                 RuleProto::Ip,
                 RuleDirection::Saddr,
-                true,
+                false,
                 Statement::Drop(None),
                 "prerouting ipv4 custom blocklist rule",
             )
@@ -213,7 +213,7 @@ impl<'a> NftConfig<'a> {
                 ipv6_custom_blocklist_set_name.clone(),
                 RuleProto::Ip6,
                 RuleDirection::Saddr,
-                true,
+                false,
                 Statement::Drop(None),
                 "prerouting ipv6 custom blocklist rule",
             )
@@ -223,7 +223,7 @@ impl<'a> NftConfig<'a> {
                 ipv4_custom_blocklist_set_name.clone(),
                 RuleProto::Ip,
                 RuleDirection::Daddr,
-                true,
+                false,
                 Statement::Drop(None),
                 "postrouting ipv4 custom blocklist rule",
             )
@@ -233,7 +233,7 @@ impl<'a> NftConfig<'a> {
                 ipv6_custom_blocklist_set_name.clone(),
                 RuleProto::Ip6,
                 RuleDirection::Daddr,
-                true,
+                false,
                 Statement::Drop(None),
                 "postrouting ipv6 custom blocklist rule",
             )
