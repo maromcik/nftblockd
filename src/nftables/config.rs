@@ -2,7 +2,7 @@ use crate::error::AppError;
 use crate::nftables::builder::{NftRulesetBuilder, RuleDirection, RuleProto, SetElements};
 use crate::set::custom_set::CustomSet;
 use crate::utils::read_ip_set_file;
-use crate::utils::stats::{RuleInfo, Stats};
+use crate::utils::stats::{ChainDropStats, RuleInfo, Stats};
 use crate::utils::subnet::parse_from_string;
 use nftables::helper;
 use nftables::schema::{Nftables, SetType};
@@ -360,19 +360,23 @@ impl<'a> NftConfig<'a> {
                         continue;
                     }
 
-                    if !rule_info
+                    if rule_info
                         .set_name
                         .starts_with(format!("@{}", self.blocklist_set_name).as_str())
-                        && !rule_info.set_name.starts_with(
-                            format!("@{}", self.custom_blocklist_set.set_name).as_str(),
-                        )
                     {
+                        debug!("Adding rule stats to main_blocklist_drop_stats: {rule_info:?}");
+                        let rule_stats = ChainDropStats::from(rule_info);
+                        stats.write().await.main_blocklist_drop_stats += rule_stats;
+                    } else if rule_info
+                        .set_name
+                        .starts_with(format!("@{}", self.custom_blocklist_set.set_name).as_str())
+                    {
+                        debug!("Adding rule stats to custom_blocklist_drop_stats: {rule_info:?}");
+                        let rule_stats = ChainDropStats::from(rule_info);
+                        stats.write().await.custom_blocklist_drop_stats += rule_stats;
+                    } else {
                         trace!("Set check; skipping: {rule_info:?}");
-                        continue;
                     }
-                    debug!("Adding rule stats: {rule_info:?}");
-                    let rule_stats = Stats::from(rule_info);
-                    stats.write().await.add(rule_stats);
                 }
                 _ => {}
             }

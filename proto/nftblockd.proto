@@ -30,7 +30,8 @@ message ChainDropStats {
 }
 
 message Stats {
-  ChainDropStats drop_stats = 1;
+  ChainDropStats main_blocklist_drop_stats = 1;
+  ChainDropStats custom_blocklist_drop_stats = 2;
 }
 
 message StatusSummary {

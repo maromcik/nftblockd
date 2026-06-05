@@ -20,7 +20,12 @@ impl Display for StatusSummary {
 
 impl Display for Stats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.drop_stats.unwrap_or_default())
+        write!(
+            f,
+            "=======MAIN BLOCKLIST=======\n{}\n\n=======CUSTOM BLOCKLIST=======\n{}",
+            self.main_blocklist_drop_stats.unwrap_or_default(),
+            self.custom_blocklist_drop_stats.unwrap_or_default()
+        )
     }
 }
 

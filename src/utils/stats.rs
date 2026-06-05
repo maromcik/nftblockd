@@ -17,7 +17,8 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct Stats {
-    pub drop_stats: ChainDropStats,
+    pub main_blocklist_drop_stats: ChainDropStats,
+    pub custom_blocklist_drop_stats: ChainDropStats,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -71,48 +72,49 @@ impl AddAssign for ChainDropStats {
 
 impl AddAssign for Stats {
     fn add_assign(&mut self, rhs: Self) {
-        self.drop_stats += rhs.drop_stats;
+        self.main_blocklist_drop_stats += rhs.main_blocklist_drop_stats;
+        self.custom_blocklist_drop_stats += rhs.custom_blocklist_drop_stats;
     }
 }
 
-impl From<RuleInfo> for Stats {
+impl From<RuleInfo> for ChainDropStats {
     fn from(rule_info: RuleInfo) -> Self {
-        let mut stats = Stats::default();
+        let mut stats = ChainDropStats::default();
         match rule_info.chain.as_str() {
             "prerouting" => {
-                stats.drop_stats.prerouting.combined.bytes += rule_info.bytes as u64;
-                stats.drop_stats.prerouting.combined.packets += rule_info.packets as u64;
+                stats.prerouting.combined.bytes += rule_info.bytes as u64;
+                stats.prerouting.combined.packets += rule_info.packets as u64;
                 match rule_info.protocol {
                     RuleProto::Ip => {
-                        stats.drop_stats.prerouting.ipv4.bytes += rule_info.bytes as u64;
-                        stats.drop_stats.prerouting.ipv4.packets += rule_info.packets as u64;
+                        stats.prerouting.ipv4.bytes += rule_info.bytes as u64;
+                        stats.prerouting.ipv4.packets += rule_info.packets as u64;
                     }
                     RuleProto::Ip6 => {
-                        stats.drop_stats.prerouting.ipv6.bytes += rule_info.bytes as u64;
-                        stats.drop_stats.prerouting.ipv6.packets += rule_info.packets as u64;
+                        stats.prerouting.ipv6.bytes += rule_info.bytes as u64;
+                        stats.prerouting.ipv6.packets += rule_info.packets as u64;
                     }
                     RuleProto::Other => {}
                 }
             }
             "postrouting" => {
-                stats.drop_stats.postrouting.combined.bytes += rule_info.bytes as u64;
-                stats.drop_stats.postrouting.combined.packets += rule_info.packets as u64;
+                stats.postrouting.combined.bytes += rule_info.bytes as u64;
+                stats.postrouting.combined.packets += rule_info.packets as u64;
                 match rule_info.protocol {
                     RuleProto::Ip => {
-                        stats.drop_stats.postrouting.ipv4.bytes += rule_info.bytes as u64;
-                        stats.drop_stats.postrouting.ipv4.packets += rule_info.packets as u64;
+                        stats.postrouting.ipv4.bytes += rule_info.bytes as u64;
+                        stats.postrouting.ipv4.packets += rule_info.packets as u64;
                     }
                     RuleProto::Ip6 => {
-                        stats.drop_stats.postrouting.ipv6.bytes += rule_info.bytes as u64;
-                        stats.drop_stats.postrouting.ipv6.packets += rule_info.packets as u64;
+                        stats.postrouting.ipv6.bytes += rule_info.bytes as u64;
+                        stats.postrouting.ipv6.packets += rule_info.packets as u64;
                     }
                     RuleProto::Other => {}
                 }
             }
             _ => {}
         }
-        stats.drop_stats.combined.bytes += rule_info.bytes as u64;
-        stats.drop_stats.combined.packets += rule_info.packets as u64;
+        stats.combined.bytes += rule_info.bytes as u64;
+        stats.combined.packets += rule_info.packets as u64;
         stats
     }
 }
@@ -210,7 +212,8 @@ impl From<ChainDropStats> for GrpcChainDropStats {
 impl From<Stats> for GrpcStats {
     fn from(value: Stats) -> Self {
         GrpcStats {
-            drop_stats: Some(value.drop_stats.into()),
+            main_blocklist_drop_stats: Some(value.main_blocklist_drop_stats.into()),
+            custom_blocklist_drop_stats: Some(value.custom_blocklist_drop_stats.into()),
         }
     }
 }
