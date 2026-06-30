@@ -100,20 +100,6 @@ impl TrieNode {
     }
 }
 
-/// Deduplicates a collection of IP prefixes by using a prefix trie to organize them.
-/// This ensures that redundant, more specific subnets are removed.
-/// For example, `192.168.0.0/16` will absorb `192.168.1.0/24`.
-///
-/// # Parameters
-/// - `ips`: An iterator over IP prefixes that implements the `BlockListNetwork` trait.
-///
-/// # Returns
-/// A deduplicated `Vec` containing the broadest possible subnets.
-///
-/// # Time Complexity
-/// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
-///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
-
 // original version before auto-merge
 // #[must_use]
 // pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
@@ -141,7 +127,20 @@ impl TrieNode {
 //     ips
 // }
 
-// deduplicate only IPs/Subnets not ranges
+/// deduplicate only IPs/Subnets not ranges
+/// Deduplicates a collection of IP prefixes by using a prefix trie to organize them.
+/// This ensures that redundant, more specific subnets are removed.
+/// For example, `192.168.0.0/16` will absorb `192.168.1.0/24`.
+///
+/// # Parameters
+/// - `ips`: An iterator over IP prefixes that implements the `BlockListNetwork` trait.
+///
+/// # Returns
+/// A deduplicated `Vec` containing the broadest possible subnets.
+///
+/// # Time Complexity
+/// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
+///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
 pub fn deduplicate<T>(ips: Option<Vec<NetworkType<T>>>) -> Option<Vec<NetworkType<T>>>
 where
     T: ListNetwork,

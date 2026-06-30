@@ -197,15 +197,12 @@ where
                 let mut ip_split = ip.split("-");
                 let start = ip_split.next();
                 let end = ip_split.next();
-                match (start, end) {
-                    (Some(start), Some(end)) => {
-                        if let (Ok(start), Ok(end)) = (start.parse::<T>(), end.parse::<T>()) {
-                            debug!("parsed range: {start} - {end}");
-                            parsed.push(NetworkType::Range(start, end));
-                            continue;
-                        }
-                    }
-                    _ => {}
+                if let (Some(start), Some(end)) = (start, end)
+                    && let (Ok(start), Ok(end)) = (start.parse::<T>(), end.parse::<T>())
+                {
+                    debug!("parsed range: {start} - {end}");
+                    parsed.push(NetworkType::Range(start, end));
+                    continue;
                 }
                 if strict {
                     return Err(AppError::ParseError(format!("{e}: {ip}")));

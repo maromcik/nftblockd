@@ -2,7 +2,7 @@ use crate::utils::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use std::fmt::Debug;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum NetworkType<T>
 where
     T: ListNetwork + Clone + Debug,
