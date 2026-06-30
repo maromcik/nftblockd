@@ -132,10 +132,36 @@ impl TrieNode {
 //     Some(result)
 // }
 
-#[must_use]
+// bypass deduplication
+// #[must_use]
+// pub fn deduplicate<T>(ips: Option<Vec<NetworkType<T>>>) -> Option<Vec<NetworkType<T>>>
+// where
+//     T: ListNetwork,
+// {
+//     ips
+// }
+
+// deduplicate only IPs/Subnets not ranges
 pub fn deduplicate<T>(ips: Option<Vec<NetworkType<T>>>) -> Option<Vec<NetworkType<T>>>
 where
     T: ListNetwork,
 {
-    ips
+    let mut ranges = Vec::new();
+    let mut networks = Vec::new();
+    for ip_type in ips? {
+        match &ip_type {
+            NetworkType::Ip(_) => networks.push(ip_type),
+            NetworkType::Range(_, _) => ranges.push(ip_type),
+        }
+    }
+    networks.sort_by_key(ListNetwork::network_prefix);
+    let mut root = TrieNode::new();
+    let mut result = Vec::new();
+    for ip in networks {
+        if root.insert(&ip) {
+            result.push(ip);
+        }
+    }
+    result.extend(ranges);
+    Some(result)
 }

@@ -2,12 +2,65 @@ use crate::utils::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use std::fmt::Debug;
 
+#[derive(Debug, Clone)]
 pub enum NetworkType<T>
 where
-    T: ListNetwork,
+    T: ListNetwork + Clone + Debug,
 {
     Ip(T),
     Range(T, T),
+}
+
+impl<T> NetworkType<T>
+where
+    T: ListNetwork + Clone + Debug,
+{
+    pub fn inner(&self) -> T {
+        match self {
+            NetworkType::Ip(net) => net.clone(),
+            NetworkType::Range(net1, _) => net1.clone(),
+        }
+    }
+}
+
+impl<T> ListNetwork for NetworkType<T>
+where
+    T: ListNetwork + Clone + Debug,
+{
+    fn network_addr(&self) -> BitIp {
+        match self {
+            NetworkType::Ip(net) => net.network_addr(),
+            NetworkType::Range(net1, _) => net1.network_addr(),
+        }
+    }
+
+    fn network_prefix(&self) -> u8 {
+        match self {
+            NetworkType::Ip(net) => net.network_prefix(),
+            NetworkType::Range(net1, _) => net1.network_prefix(),
+        }
+    }
+
+    fn max_prefix(&self) -> u8 {
+        match self {
+            NetworkType::Ip(net) => net.max_prefix(),
+            NetworkType::Range(net1, _) => net1.max_prefix(),
+        }
+    }
+
+    fn network_string(&self) -> String {
+        match self {
+            NetworkType::Ip(net) => net.network_string(),
+            NetworkType::Range(net1, _) => net1.network_string(),
+        }
+    }
+
+    fn is_network(&self) -> bool {
+        match self {
+            NetworkType::Ip(net) => net.is_network(),
+            NetworkType::Range(net1, _) => net1.is_network(),
+        }
+    }
 }
 
 /// Trait that defines a generic abstraction for representing network-related operations on IPv4 and IPv6 subnets.
