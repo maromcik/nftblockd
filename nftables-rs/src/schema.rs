@@ -301,6 +301,10 @@ pub struct Set<'a> {
     pub table: Cow<'a, str>,
     /// The set’s name.
     pub name: Cow<'a, str>,
+
+    #[serde(rename = "auto-merge", default)]
+    pub auto_merge: Option<bool>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The set’s handle. For input, it is used by the [delete command](NfCmd::Delete) only.
     pub handle: Option<u32>,
@@ -348,6 +352,7 @@ impl Default for Set<'_> {
             family: DEFAULT_FAMILY,
             table: DEFAULT_TABLE.into(),
             name: "myset".into(),
+            auto_merge: None,
             handle: None,
             set_type: SetTypeValue::Single(SetType::Ipv4Addr),
             policy: None,

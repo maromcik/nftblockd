@@ -1,11 +1,13 @@
-use crate::utils::network::ListNetwork;
+use crate::utils::network::{ListNetwork, NetworkType};
 
 /// Represents a generic IP address in either IPv4 or IPv6 format using numeric representations.
+#[allow(dead_code)]
 pub enum BitIp {
     Ipv4(u32),
     Ipv6(u128),
 }
 
+#[allow(dead_code)]
 impl BitIp {
     /// Performs a right-shift operation on an IP address by `n` bits
     /// and returns the result in the corresponding `BitIp` format.
@@ -41,11 +43,13 @@ impl BitIp {
 /// Each node tracks whether it's part of a subnet (`is_subnet`)
 /// and has two children corresponding to binary bits (0 or 1).
 #[derive(Default)]
+#[allow(dead_code)]
 struct TrieNode {
     children: [Option<Box<TrieNode>>; 2],
     is_subnet: bool,
 }
 
+#[allow(dead_code)]
 impl TrieNode {
     /// Creates a new and defaulted `TrieNode` instance.
     ///
@@ -109,19 +113,29 @@ impl TrieNode {
 /// # Time Complexity
 /// -   `O(h * n * logn)`: Sorting the IPs contributes `n * logn`, and inserting into the trie has
 ///     a height-dependent complexity of `h`, which is 32 for IPv4 and 128 for IPv6.
+
+// original version before auto-merge
+// #[must_use]
+// pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
+// where
+//     T: ListNetwork,
+// {
+//     let mut ips = ips?;
+//     ips.sort_by_key(ListNetwork::network_prefix);
+//     let mut root = TrieNode::new();
+//     let mut result = Vec::new();
+//     for ip in ips {
+//         if root.insert(&ip) {
+//             result.push(ip);
+//         }
+//     }
+//     Some(result)
+// }
+
 #[must_use]
-pub fn deduplicate<T>(ips: Option<Vec<T>>) -> Option<Vec<T>>
+pub fn deduplicate<T>(ips: Option<Vec<NetworkType<T>>>) -> Option<Vec<NetworkType<T>>>
 where
     T: ListNetwork,
 {
-    let mut ips = ips?;
-    ips.sort_by_key(ListNetwork::network_prefix);
-    let mut root = TrieNode::new();
-    let mut result = Vec::new();
-    for ip in ips {
-        if root.insert(&ip) {
-            result.push(ip);
-        }
-    }
-    Some(result)
+    ips
 }

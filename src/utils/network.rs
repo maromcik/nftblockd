@@ -2,6 +2,14 @@ use crate::utils::iptrie::BitIp;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use std::fmt::Debug;
 
+pub enum NetworkType<T>
+where
+    T: ListNetwork,
+{
+    Ip(T),
+    Range(T, T),
+}
+
 /// Trait that defines a generic abstraction for representing network-related operations on IPv4 and IPv6 subnets.
 /// This trait is implemented for `Ipv4Network` and `Ipv6Network`.
 pub trait ListNetwork: Clone + Debug {

@@ -151,6 +151,7 @@ impl<'a> NftRulesetBuilder<'a> {
                 family: NfFamily::INet,
                 table: table_name.into(),
                 name: set_name.into(),
+                auto_merge: Some(true),
                 handle: None,
                 set_type: schema::SetTypeValue::Single(*set_type),
                 policy: None,

@@ -1,10 +1,10 @@
 use crate::error::AppError;
 use crate::nftables::builder::SetElements;
 use crate::utils::iptrie::deduplicate;
-use crate::utils::network::ListNetwork;
+use crate::utils::network::{ListNetwork, NetworkType};
 use ipnetwork::{Ipv4Network, Ipv6Network};
-use log::warn;
-use nftables::expr::{Expression, NamedExpression, Prefix};
+use log::{debug, warn};
+use nftables::expr::{Expression, NamedExpression, Prefix, Range};
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::str::FromStr;
@@ -53,8 +53,8 @@ impl SubnetList {
 
 /// Represents a validated list of IPv4 or IPv6 subnets that can be deduplicated.
 pub enum ValidatedSubnetList {
-    IPv4(Option<Vec<Ipv4Network>>), // IPv4 list after validation.
-    IPv6(Option<Vec<Ipv6Network>>), // IPv6 list after validation.
+    IPv4(Option<Vec<NetworkType<Ipv4Network>>>), // IPv4 list after validation.
+    IPv6(Option<Vec<NetworkType<Ipv6Network>>>), // IPv6 list after validation.
 }
 
 impl ValidatedSubnetList {
@@ -78,9 +78,9 @@ impl ValidatedSubnetList {
 /// Represents a deduplicated list of IPv4 or IPv6 subnets.
 pub enum DeduplicatedSubnetList {
     /// Deduplicated IPv4 subnets contained in a `Vec`.
-    IPv4(Option<Vec<Ipv4Network>>),
+    IPv4(Option<Vec<NetworkType<Ipv4Network>>>),
     /// Deduplicated IPv6 subnets contained in a `Vec`.
-    IPv6(Option<Vec<Ipv6Network>>),
+    IPv6(Option<Vec<NetworkType<Ipv6Network>>>),
 }
 
 impl DeduplicatedSubnetList {
@@ -170,7 +170,10 @@ pub fn parse_from_string<S: AsRef<str>>(
 /// Aa vector of valid subnets represented as type `T`.
 /// # Errors
 /// Will return `AppError` when subnets are invalid
-pub fn validate_subnets<T>(ips: &[String], strict: bool) -> Result<Option<Vec<T>>, AppError>
+pub fn validate_subnets<T>(
+    ips: &[String],
+    strict: bool,
+) -> Result<Option<Vec<NetworkType<T>>>, AppError>
 where
     T: ListNetwork + FromStr + Display + std::fmt::Debug,
     <T as FromStr>::Err: Display,
@@ -181,7 +184,7 @@ where
         match ip.parse::<T>() {
             Ok(parsed_ip) => {
                 if parsed_ip.is_network() {
-                    parsed.push(parsed_ip);
+                    parsed.push(NetworkType::Ip(parsed_ip));
                 } else if strict {
                     return Err(AppError::ParseError(format!(
                         "invalid ip: {parsed_ip}; not a network"
@@ -191,6 +194,19 @@ where
                 }
             }
             Err(e) => {
+                let mut ip_split = ip.split("-");
+                let start = ip_split.next();
+                let end = ip_split.next();
+                match (start, end) {
+                    (Some(start), Some(end)) => {
+                        if let (Ok(start), Ok(end)) = (start.parse::<T>(), end.parse::<T>()) {
+                            debug!("parsed range: {start} - {end}");
+                            parsed.push(NetworkType::Range(start, end));
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
                 if strict {
                     return Err(AppError::ParseError(format!("{e}: {ip}")));
                 }
@@ -217,17 +233,23 @@ where
 /// # Returns
 /// A `SetElements` vector of `nftables` expressions.
 #[must_use]
-pub fn get_nft_expressions<'a, T>(ips: Option<Vec<T>>) -> Option<SetElements<'a>>
+pub fn get_nft_expressions<'a, T>(ips: Option<Vec<NetworkType<T>>>) -> Option<SetElements<'a>>
 where
     T: ListNetwork,
 {
     Some(
         ips?.iter()
-            .map(|ip| {
-                Expression::Named(NamedExpression::Prefix(Prefix {
+            .map(|ip| match ip {
+                NetworkType::Ip(ip) => Expression::Named(NamedExpression::Prefix(Prefix {
                     addr: Box::new(Expression::String(Cow::from(ip.network_string()))),
                     len: u32::from(ip.network_prefix()),
-                }))
+                })),
+                NetworkType::Range(start, end) => Expression::Range(Box::new(Range {
+                    range: [
+                        Expression::String(Cow::from(start.network_string())),
+                        Expression::String(Cow::from(end.network_string())),
+                    ],
+                })),
             })
             .collect::<Vec<Expression>>(),
     )
